@@ -1,6 +1,6 @@
 import json
 from typing import List, Dict, Optional
-
+from collections import deque
 class HarnessProjectModel:
     """Manages the hierarchical in-memory representation of a harness project,
     including validation, topology traversal, and wire routing."""
@@ -87,6 +87,41 @@ class HarnessProjectModel:
             if not has_endpoint_on_node and not traverses_removed_bundle:
                 active_wires.append(w)
         self.data["wires"] = active_wires
+    def find_bundle_path(self, start_node_id: str, end_node_id: str) -> list:
+        """Finds the ordered list of bundle IDs connecting start_node_id to end_node_id 
+        using a Breadth-First Search (BFS) over the bundle topology graph."""
+        if start_node_id == end_node_id:
+            return []
+
+        # Build an adjacency map: node_id -> list of (neighbor_node_id, bundle_id)
+        graph = {}
+        for bundle in self.data.get("bundles", []):
+            b_id = bundle["bundle_id"]
+            u = bundle["start_node_id"]
+            v = bundle["end_node_id"]
+            
+            graph.setdefault(u, []).append((v, b_id))
+            graph.setdefault(v, []).append((u, b_id))
+
+        if start_node_id not in graph or end_node_id not in graph:
+            return []  # One or both nodes are isolated
+
+        # BFS queue storing (current_node, path_of_bundles)
+        queue = deque([(start_node_id, [])])
+        visited = {start_node_id}
+
+        while queue:
+            current_node, path = queue.popleft()
+
+            if current_node == end_node_id:
+                return path
+
+            for neighbor, bundle_id in graph.get(current_node, []):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append((neighbor, path + [bundle_id]))
+
+        return []  # No physical bundle pathway exists between these nodes
     def calculate_wire_length(self, wire_id: str) -> float:
         """Computes total wire length dynamically based on bundle lengths and physical correction parameters[cite: 1]."""
         wire = next((w for w in self.data["wires"] if w["wire_id"] == wire_id), None)

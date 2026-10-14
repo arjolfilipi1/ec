@@ -236,7 +236,7 @@ class HarnessEditorWindow(QMainWindow):
         formboard_action = QAction("Generate 1:1 Formboard", self)
         tools_menu.addAction(formboard_action)
     def prompt_add_wire(self):
-        """Interactively prompt user to select start/end nodes, cavities, and wire attributes."""
+        """Interactively prompt user to select start/end nodes, check bundle routing, and add wire."""
         nodes = self.current_project.data.get("nodes", [])
         if len(nodes) < 2:
             self.statusBar().showMessage("At least two connector nodes are required to route a wire.")
@@ -244,28 +244,37 @@ class HarnessEditorWindow(QMainWindow):
 
         node_labels = [f"{n['ref_designator']} ({n['node_id']})" for n in nodes]
         
-        # 1. Select Start Node
+        # 1. Select Start & End Nodes
         start_choice, ok1 = QInputDialog.getItem(self, "Add Wire - Start Node", "Select Start Connector:", node_labels, 0, False)
         if not ok1:
             return
         start_node = nodes[node_labels.index(start_choice)]
 
-        # Select Start Cavity
         start_cavities = [p['cavity_id'] for p in start_node.get("pins", [{"cavity_id": "1"}])]
         start_cavity, ok_sc = QInputDialog.getItem(self, "Add Wire - Start Cavity", f"Select Cavity on {start_node['ref_designator']}:", start_cavities, 0, False)
         if not ok_sc:
             return
 
-        # 2. Select End Node
         end_choice, ok2 = QInputDialog.getItem(self, "Add Wire - End Node", "Select End Connector:", node_labels, 1 if len(node_labels) > 1 else 0, False)
         if not ok2:
             return
         end_node = nodes[node_labels.index(end_choice)]
 
-        # Select End Cavity
         end_cavities = [p['cavity_id'] for p in end_node.get("pins", [{"cavity_id": "1"}])]
         end_cavity, ok_ec = QInputDialog.getItem(self, "Add Wire - End Cavity", f"Select Cavity on {end_node['ref_designator']}:", end_cavities, 0, False)
         if not ok_ec:
+            return
+
+        # 2. Check for physical bundle pathway
+        routed_bundles = self.current_project.find_bundle_path(start_node["node_id"], end_node["node_id"])
+        if not routed_bundles:
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, 
+                "Routing Error", 
+                f"No continuous physical bundle pathway found between {start_node['ref_designator']} and {end_node['ref_designator']}.\n\n"
+                "Please create a connecting bundle segment between these nodes before routing a wire."
+            )
             return
 
         # 3. Enter Wire Metadata
@@ -280,13 +289,6 @@ class HarnessEditorWindow(QMainWindow):
         color, ok5 = QInputDialog.getText(self, "Add Wire", "Enter Wire Color (e.g., Blue/White):")
         if not ok5 or not color:
             return
-
-        # Automatically find any bundle connecting these two nodes
-        routed_bundles = []
-        for b in self.current_project.data.get("bundles", []):
-            bundle_nodes = {b["start_node_id"], b["end_node_id"]}
-            if start_node["node_id"] in bundle_nodes and end_node["node_id"] in bundle_nodes:
-                routed_bundles.append(b["bundle_id"])
 
         wire_data = {
             "wire_id": wire_id,
@@ -303,7 +305,7 @@ class HarnessEditorWindow(QMainWindow):
 
         command = AddWireCommand(self.current_project, wire_data, self.refresh_views)
         self.undo_stack.push(command)
-        self.statusBar().showMessage(f"Added wire {wire_id} between {start_node['ref_designator']} and {end_node['ref_designator']} (Undoable).")
+        self.statusBar().showMessage(f"Added wire {wire_id} across bundles {routed_bundles} (Undoable).")
 
     def prompt_remove_wire(self):
         """Prompt user to select and remove an existing wire."""
