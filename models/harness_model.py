@@ -1,0 +1,131 @@
+import json
+from typing import List, Dict, Optional
+
+class HarnessProjectModel:
+    """Manages the hierarchical in-memory representation of a harness project,
+    including validation, topology traversal, and wire routing."""
+    
+    def __init__(self, project_data: Optional[dict] = None):
+        if project_data:
+            self.data = project_data
+        else:
+            self.data = {
+                "project_id": "",
+                "project_name": "New Harness Project",
+                "revision": "A",
+                "units": "MM_AWG",
+                "nodes": [],
+                "bundles": [],
+                "wires": []
+            }
+
+    @property
+    def project_id(self) -> str:
+        return self.data.get("project_id", "")
+
+    @property
+    def project_name(self) -> str:
+        return self.data.get("project_name", "")
+
+    def add_node(self, node_id: str, part_number: str, ref_designator: str, x: float, y: float, pins: Optional[List[dict]] = None):
+        """Adds a physical connection point (connector, splice, or device) to the topology[cite: 1]."""
+        node = {
+            "node_id": node_id,
+            "part_number": part_number,
+            "ref_designator": ref_designator,
+            "position_2d": {"x": x, "y": y},
+            "pins": pins or []
+        }
+        self.data["nodes"].append(node)
+
+    def add_bundle(self, bundle_id: str, start_node_id: str, end_node_id: str, length_mm: float, coverings: Optional[List[dict]] = None):
+        """Adds a physical routing segment (bundle/pathway) between two nodes[cite: 1]."""
+        bundle = {
+            "bundle_id": bundle_id,
+            "start_node_id": start_node_id,
+            "end_node_id": end_node_id,
+            "length_mm": length_mm,
+            "coverings": coverings or []
+        }
+        self.data["bundles"].append(bundle)
+
+    def add_wire(self, wire_id: str, signal_name: str, part_number: str, color: str, endpoints: List[dict], routed_bundle_ids: List[str], extra_length_mm: float = 0.0):
+        """Adds an electrical conductor routed through specific bundle paths[cite: 1]."""
+        wire = {
+            "wire_id": wire_id,
+            "signal_name": signal_name,
+            "part_number": part_number,
+            "color": color,
+            "endpoints": endpoints,
+            "routed_bundle_ids": routed_bundle_ids,
+            "extra_length_mm": extra_length_mm
+        }
+        self.data["wires"].append(wire)
+    def remove_node(self, node_id: str):
+        """Removes a node and cleans up associated bundles and wires referencing it."""
+        # Remove node
+        self.data["nodes"] = [n for n in self.data["nodes"] if n["node_id"] != node_id]
+
+        # Remove bundles connected to this node
+        removed_bundles = []
+        active_bundles = []
+        for b in self.data["bundles"]:
+            if b["start_node_id"] == node_id or b["end_node_id"] == node_id:
+                removed_bundles.append(b["bundle_id"])
+            else:
+                active_bundles.append(b)
+        self.data["bundles"] = active_bundles
+
+        # Remove wires referencing removed bundles or endpoints on this node
+        active_wires = []
+        for w in self.data["wires"]:
+            # Check if wire endpoint is on this node
+            has_endpoint_on_node = any(ep["node_id"] == node_id for ep in w.get("endpoints", []))
+            # Check if wire traverses a removed bundle
+            traverses_removed_bundle = any(b_id in removed_bundles for b_id in w.get("routed_bundle_ids", []))
+            
+            if not has_endpoint_on_node and not traverses_removed_bundle:
+                active_wires.append(w)
+        self.data["wires"] = active_wires
+    def calculate_wire_length(self, wire_id: str) -> float:
+        """Computes total wire length dynamically based on bundle lengths and physical correction parameters[cite: 1]."""
+        wire = next((w for w in self.data["wires"] if w["wire_id"] == wire_id), None)
+        if not wire:
+            return 0.0
+
+        # Sum lengths of all bundles traversed by the wire
+        bundle_map = {b["bundle_id"]: b["length_mm"] for b in self.data["bundles"]}
+        total_bundle_length = sum(bundle_map.get(b_id, 0.0) for b_id in wire.get("routed_bundle_ids", []))
+
+        # Add user-defined extra length (strain relief / slack)
+        extra_length = wire.get("extra_length_mm", 0.0)
+
+        # Retrieve endpoint insertion depths from nodes if specified
+        insertion_depth_total = 0.0
+        node_map = {n["node_id"]: n for n in self.data["nodes"]}
+        
+        for ep in wire.get("endpoints", []):
+            node = node_map.get(ep.get("node_id"))
+            if node:
+                for pin in node.get("pins", []):
+                    if pin.get("cavity_id") == ep.get("cavity_id"):
+                        insertion_depth_total += pin.get("insertion_depth_mm", 0.0)
+
+        return total_bundle_length + insertion_depth_total + extra_length
+    def add_wire_object(self, wire_data: dict):
+        """Adds an electrical conductor routed through bundle paths."""
+        self.data["wires"].append(wire_data)
+
+    def remove_wire(self, wire_id: str):
+        """Removes an electrical conductor by its wire_id."""
+        self.data["wires"] = [w for w in self.data["wires"] if w["wire_id"] != wire_id]
+    def update_node_position(self, node_id: str, x: float, y: float):
+        """Updates the 2D position coordinates of a node."""
+        for node in self.data.get("nodes", []):
+            if node["node_id"] == node_id:
+                node["position_2d"]["x"] = x
+                node["position_2d"]["y"] = y
+                break
+    def to_json(self) -> str:
+        """Serializes the project model to JSON format for database persistence[cite: 1]."""
+        return json.dumps(self.data, indent=2)
