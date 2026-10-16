@@ -1,6 +1,7 @@
 import json
 from typing import List, Dict, Optional
 from collections import deque
+import math,uuid
 class HarnessProjectModel:
     """Manages the hierarchical in-memory representation of a harness project,
     including validation, topology traversal, and wire routing."""
@@ -164,3 +165,88 @@ class HarnessProjectModel:
     def to_json(self) -> str:
         """Serializes the project model to JSON format for database persistence[cite: 1]."""
         return json.dumps(self.data, indent=2)
+    def find_nearest_node(self, target_node_id: str) -> dict:
+        """Finds the geometrically nearest node to the target node using 2D canvas coordinates."""
+        target_node = next((n for n in self.data.get("nodes", []) if n["node_id"] == target_node_id), None)
+        if not target_node:
+            return None
+
+        t_pos = target_node.get("position_2d", {"x": 0, "y": 0})
+        tx, ty = t_pos["x"], t_pos["y"]
+
+        nearest_node = None
+        min_distance = float('inf')
+
+        for node in self.data.get("nodes", []):
+            if node["node_id"] == target_node_id:
+                continue
+            
+            n_pos = node.get("position_2d", {"x": 0, "y": 0})
+            nx, ny = n_pos["x"], n_pos["y"]
+
+            # Euclidean distance calculation
+            distance = math.sqrt((nx - tx) ** 2 + (ny - ty) ** 2)
+            if distance < min_distance:
+                min_distance = distance
+                nearest_node = node
+
+        return nearest_node
+    def break_bundle(self, bundle_id: str, junction_ref: str, junction_x: float, junction_y: float) -> str:
+        """
+        Breaks an existing bundle into two sub-segments by inserting a new splice/junction node.
+        Returns the new junction node ID.
+        """
+        # 1. Find the target bundle
+        bundle_to_break = next((b for b in self.data.get("bundles", []) if b["bundle_id"] == bundle_id), None)
+        if not bundle_to_break:
+            return None
+
+        start_node_id = bundle_to_break["start_node_id"]
+        end_node_id = bundle_to_break["end_node_id"]
+        total_length = bundle_to_break["length_mm"]
+
+        # 2. Create a new junction/splice node
+        junction_node_id = f"node_junc_{uuid.uuid4().hex[:4].upper()}"
+        junction_node = {
+            "node_id": junction_node_id,
+            "part_number": "SPLICE-JUNCTION-GEN",
+            "ref_designator": junction_ref,
+            "position_2d": {"x": junction_x, "y": junction_y},
+            "pins": []
+        }
+        self.data["nodes"].append(junction_node)
+
+        # 3. Remove the original bundle
+        self.data["bundles"] = [b for b in self.data["bundles"] if b["bundle_id"] != bundle_id]
+
+        # 4. Create two new sub-bundles proportional to length or split evenly
+        sub_len = total_length / 2.0
+        
+        b1_id = f"BUN-{uuid.uuid4().hex[:4].upper()}"
+        b2_id = f"BUN-{uuid.uuid4().hex[:4].upper()}"
+
+        self.data["bundles"].append({
+            "bundle_id": b1_id,
+            "start_node_id": start_node_id,
+            "end_node_id": junction_node_id,
+            "length_mm": round(sub_len, 1),
+            "coverings": []
+        })
+
+        self.data["bundles"].append({
+            "bundle_id": b2_id,
+            "start_node_id": junction_node_id,
+            "end_node_id": end_node_id,
+            "length_mm": round(sub_len, 1),
+            "coverings": []
+        })
+
+        # 5. Update any wires traversing the old bundle to traverse the new sub-bundles instead
+        for wire in self.data.get("wires", []):
+            routed = wire.get("routed_bundle_ids", [])
+            if bundle_id in routed:
+                idx = routed.index(bundle_id)
+                # Replace old bundle ID with the two new sub-bundles in sequence
+                routed[idx:idx+1] = [b1_id, b2_id]
+
+        return junction_node_id

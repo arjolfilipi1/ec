@@ -1,6 +1,30 @@
 from PyQt5.QtWidgets import QUndoCommand
 from copy import deepcopy
+class BreakBundleCommand(QUndoCommand):
+    """Undo/redo command for breaking a bundle segment and inserting a junction node."""
+    def __init__(self, project_model, bundle_id, junction_ref, x, y, update_callback):
+        super().__init__(f"Break Bundle {bundle_id}")
+        self.project_model = project_model
+        self.bundle_id = bundle_id
+        self.junction_ref = junction_ref
+        self.x = x
+        self.y = y
+        self.update_callback = update_callback
+        
+        self.snapshot_before = deepcopy(project_model.data)
+        self.snapshot_after = None
 
+    def undo(self):
+        self.project_model.data = deepcopy(self.snapshot_before)
+        self.update_callback()
+
+    def redo(self):
+        if not self.snapshot_after:
+            self.project_model.break_bundle(self.bundle_id, self.junction_ref, self.x, self.y)
+            self.snapshot_after = deepcopy(self.project_model.data)
+        else:
+            self.project_model.data = deepcopy(self.snapshot_after)
+        self.update_callback()
 class ModifyHarnessCommand(QUndoCommand):
     """Generic undo/redo command that snapshots project state before and after modification."""
     

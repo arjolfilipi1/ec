@@ -1,19 +1,19 @@
 import sys
 import os
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QAction, QMenuBar, QSplitter, QInputDialog, QUndoStack
+    QApplication, QMainWindow, QAction, QMenuBar, QSplitter, QInputDialog, QUndoStack,QLineEdit
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QKeySequence
 from copy import deepcopy
 # Ensure local imports resolve correctly
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
+import math
 from database import init_db, DatabaseManager
 from models.harness_model import HarnessProjectModel
 from ui.project_tree import HarnessProjectTreeView
 from ui.cad_canvas import HarnessCADCanvas
-from commands.harness_commands import AddNodeCommand, RemoveNodeCommand,AddWireCommand,RemoveWireCommand,MoveNodeCommand
+from commands.harness_commands import AddNodeCommand, RemoveNodeCommand,AddWireCommand,RemoveWireCommand,MoveNodeCommand,BreakBundleCommand
 
 class HarnessEditorWindow(QMainWindow):
     def __init__(self):
@@ -44,126 +44,126 @@ class HarnessEditorWindow(QMainWindow):
         """Loads a sample multi-branch harness project topology for demonstration[cite: 1]."""
         self.current_project.data = {
             "project_id": "proj-9988-aabb",
-  "project_name": "Engine Bay Harness - Model X",
-  "revision": "B",
-  "units": "MM_AWG",
-  "nodes": [
-    {
-      "node_id": "node_ecu",
-      "part_number": "CONN-ECU-48P",
-      "ref_designator": "X1",
-      "position_2d": {
-        "x": 41.0,
-        "y": -222.0
-      },
-      "pins": [
-        {
-          "cavity_id": "1",
-          "signal_name": "CAN_H",
-          "insertion_depth_mm": 4.5
-        },
-        {
-          "cavity_id": "2",
-          "signal_name": "CAN_L",
-          "insertion_depth_mm": 4.5
-        }
-      ]
-    },
-    {
-      "node_id": "node_sensor",
-      "part_number": "CONN-SEN-3P",
-      "ref_designator": "X2",
-      "position_2d": {
-        "x": 600.0,
-        "y": 200.0
-      },
-      "pins": [
-        {
-          "cavity_id": "A",
-          "signal_name": "CAN_H",
-          "insertion_depth_mm": 3.0
-        },
-        {
-          "cavity_id": "B",
-          "signal_name": "CAN_L",
-          "insertion_depth_mm": 3.0
-        }
-      ]
-    },
-    {
-      "node_id": "node_x3",
-      "part_number": "11",
-      "ref_designator": "x3",
-      "position_2d": {
-        "x": 350.0,
-        "y": 300.0
-      },
-      "pins": [
-        {
-          "cavity_id": "1",
-          "signal_name": "GND",
-          "insertion_depth_mm": 3.5
-        }
-      ]
-    }
-  ],
-  "bundles": [
-    {
-      "bundle_id": "BUN-01",
-      "start_node_id": "node_ecu",
-      "end_node_id": "node_sensor",
-      "length_mm": 450.0,
-      "coverings": [
-        {
-          "covering_part_number": "SLEEVE-NYLON-10MM",
-          "start_offset_mm": 0,
-          "end_offset_mm": 450
-        }
-      ]
-    }
-  ],
-  "wires": [
-    {
-      "wire_id": "W-01",
-      "signal_name": "CAN_H",
-      "part_number": "WIRE-FLRY-0.5-YEL",
-      "color": "Yellow",
-      "endpoints": [
-        {
-          "node_id": "node_ecu",
-          "cavity_id": "1"
-        },
-        {
-          "node_id": "node_sensor",
-          "cavity_id": "A"
-        }
-      ],
-      "routed_bundle_ids": [
-        "BUN-01"
-      ],
-      "extra_length_mm": 25.0
-    },
-    {
-      "wire_id": "W-02",
-      "signal_name": "11",
-      "part_number": "WIRE-FLRY-0.5-GEN",
-      "color": "Blue",
-      "endpoints": [
-        {
-          "node_id": "node_x3",
-          "cavity_id": "1"
-        },
-        {
-          "node_id": "node_ecu",
-          "cavity_id": "2"
-        }
-      ],
-      "routed_bundle_ids": [
-        
-      ],
-      "extra_length_mm": 20.0
-    }
-  ]
+          "project_name": "Engine Bay Harness - Model X",
+          "revision": "B",
+          "units": "MM_AWG",
+          "nodes": [
+            {
+              "node_id": "node_ecu",
+              "part_number": "CONN-ECU-48P",
+              "ref_designator": "X1",
+              "position_2d": {
+                "x": 41.0,
+                "y": -222.0
+              },
+              "pins": [
+                {
+                  "cavity_id": "1",
+                  "signal_name": "CAN_H",
+                  "insertion_depth_mm": 4.5
+                },
+                {
+                  "cavity_id": "2",
+                  "signal_name": "CAN_L",
+                  "insertion_depth_mm": 4.5
+                }
+              ]
+            },
+            {
+              "node_id": "node_sensor",
+              "part_number": "CONN-SEN-3P",
+              "ref_designator": "X2",
+              "position_2d": {
+                "x": 600.0,
+                "y": 200.0
+              },
+              "pins": [
+                {
+                  "cavity_id": "A",
+                  "signal_name": "CAN_H",
+                  "insertion_depth_mm": 3.0
+                },
+                {
+                  "cavity_id": "B",
+                  "signal_name": "CAN_L",
+                  "insertion_depth_mm": 3.0
+                }
+              ]
+            },
+            {
+              "node_id": "node_x3",
+              "part_number": "11",
+              "ref_designator": "x3",
+              "position_2d": {
+                "x": 350.0,
+                "y": 300.0
+              },
+              "pins": [
+                {
+                  "cavity_id": "1",
+                  "signal_name": "GND",
+                  "insertion_depth_mm": 3.5
+                }
+              ]
+            }
+          ],
+          "bundles": [
+            {
+              "bundle_id": "BUN-01",
+              "start_node_id": "node_ecu",
+              "end_node_id": "node_sensor",
+              "length_mm": 450.0,
+              "coverings": [
+                {
+                  "covering_part_number": "SLEEVE-NYLON-10MM",
+                  "start_offset_mm": 0,
+                  "end_offset_mm": 450
+                }
+              ]
+            }
+          ],
+          "wires": [
+            {
+              "wire_id": "W-01",
+              "signal_name": "CAN_H",
+              "part_number": "WIRE-FLRY-0.5-YEL",
+              "color": "Yellow",
+              "endpoints": [
+                {
+                  "node_id": "node_ecu",
+                  "cavity_id": "1"
+                },
+                {
+                  "node_id": "node_sensor",
+                  "cavity_id": "A"
+                }
+              ],
+              "routed_bundle_ids": [
+                "BUN-01"
+              ],
+              "extra_length_mm": 25.0
+            },
+            {
+              "wire_id": "W-02",
+              "signal_name": "11",
+              "part_number": "WIRE-FLRY-0.5-GEN",
+              "color": "Blue",
+              "endpoints": [
+                {
+                  "node_id": "node_x3",
+                  "cavity_id": "1"
+                },
+                {
+                  "node_id": "node_ecu",
+                  "cavity_id": "2"
+                }
+              ],
+              "routed_bundle_ids": [
+                
+              ],
+              "extra_length_mm": 20.0
+            }
+          ]
         }
         DatabaseManager.save_project(self.current_project.data)
 
@@ -228,6 +228,9 @@ class HarnessEditorWindow(QMainWindow):
         remove_wire_action = QAction("Remove Wire...", self)
         remove_wire_action.triggered.connect(self.prompt_remove_wire)
         edit_menu.addAction(remove_wire_action)
+        break_bundle_action = QAction("Break Bundle / Add Branch...", self)
+        break_bundle_action.triggered.connect(self.prompt_break_bundle)
+        edit_menu.addAction(break_bundle_action)
         # Tools Menu
         tools_menu = menu_bar.addMenu("&Tools")
         drc_action = QAction("Run Design Rule Checker (DRC)", self)
@@ -235,8 +238,42 @@ class HarnessEditorWindow(QMainWindow):
 
         formboard_action = QAction("Generate 1:1 Formboard", self)
         tools_menu.addAction(formboard_action)
+    def prompt_break_bundle(self):
+        """Prompt user to select a bundle to break and specify a junction reference name."""
+        bundles = self.current_project.data.get("bundles", [])
+        if not bundles:
+            self.statusBar().showMessage("No bundles available to break.")
+            return
+
+        bundle_ids = [b["bundle_id"] for b in bundles]
+        bundle_id, ok1 = QInputDialog.getItem(self, "Break Bundle", "Select Bundle to Break:", bundle_ids, 0, False)
+        if not ok1 or not bundle_id:
+            return
+
+        junction_ref, ok2 = QInputDialog.getText(self, "Break Bundle", "Enter Junction/Splice Reference (e.g., J1):", QLineEdit.Normal, "J1")
+        if not ok2 or not junction_ref:
+            return
+
+        # Find bundle to calculate midpoint coordinates as default placement
+        target_bundle = next(b for b in bundles if b["bundle_id"] == bundle_id)
+        node_map = {n["node_id"]: n for n in self.current_project.data.get("nodes", [])}
+        
+        start_node = node_map.get(target_bundle["start_node_id"])
+        end_node = node_map.get(target_bundle["end_node_id"])
+        
+        mid_x, mid_y = 300.0, 300.0
+        if start_node and end_node:
+            p1 = start_node.get("position_2d", {"x": 0, "y": 0})
+            p2 = end_node.get("position_2d", {"x": 0, "y": 0})
+            mid_x = (p1["x"] + p2["x"]) / 2.0
+            mid_y = (p1["y"] + p2["y"]) / 2.0
+
+        command = BreakBundleCommand(self.current_project, bundle_id, junction_ref, mid_x, mid_y, self.refresh_views)
+        self.undo_stack.push(command)
+        self.statusBar().showMessage(f"Broke bundle {bundle_id} and inserted junction {junction_ref} (Undoable).")
     def prompt_add_wire(self):
-        """Interactively prompt user to select start/end nodes, check bundle routing, and add wire."""
+        """Interactively prompt user to select start/end nodes, check bundle routing, 
+        automatically bridge missing pathways, and wrap the entire transaction in an undoable snapshot command."""
         nodes = self.current_project.data.get("nodes", [])
         if len(nodes) < 2:
             self.statusBar().showMessage("At least two connector nodes are required to route a wire.")
@@ -265,19 +302,7 @@ class HarnessEditorWindow(QMainWindow):
         if not ok_ec:
             return
 
-        # 2. Check for physical bundle pathway
-        routed_bundles = self.current_project.find_bundle_path(start_node["node_id"], end_node["node_id"])
-        if not routed_bundles:
-            from PyQt5.QtWidgets import QMessageBox
-            QMessageBox.warning(
-                self, 
-                "Routing Error", 
-                f"No continuous physical bundle pathway found between {start_node['ref_designator']} and {end_node['ref_designator']}.\n\n"
-                "Please create a connecting bundle segment between these nodes before routing a wire."
-            )
-            return
-
-        # 3. Enter Wire Metadata
+        # 2. Enter Wire Metadata first so we have the ID ready for the command description
         wire_id, ok3 = QInputDialog.getText(self, "Add Wire", "Enter Wire ID (e.g., W-02):")
         if not ok3 or not wire_id:
             return
@@ -290,6 +315,50 @@ class HarnessEditorWindow(QMainWindow):
         if not ok5 or not color:
             return
 
+        # Initialize the Undoable Snapshot Command
+        from commands.harness_commands import ModifyHarnessCommand
+        command = ModifyHarnessCommand(self.current_project, f"Add Wire {wire_id} (with Auto-Bundle)", self.refresh_views)
+
+        # 3. Check for physical bundle pathway
+        routed_bundles = self.current_project.find_bundle_path(start_node["node_id"], end_node["node_id"])
+        if not routed_bundles:
+            from PyQt5.QtWidgets import QMessageBox
+            
+            nearest = self.current_project.find_nearest_node(start_node["node_id"])
+            nearest_hint = f"\n\nHint: The closest connector to {start_node['ref_designator']} is {nearest['ref_designator']}." if nearest else ""
+            
+            reply = QMessageBox.question(
+                self, 
+                "Missing Bundle Pathway", 
+                f"No continuous physical bundle pathway found between {start_node['ref_designator']} and {end_node['ref_designator']}.{nearest_hint}\n\n"
+                "Would you like to automatically create a connecting bundle between them?",
+                QMessageBox.Yes | QMessageBox.No, 
+                QMessageBox.Yes
+            )
+            
+            if reply == QMessageBox.Yes:
+                import uuid, math
+                new_bundle_id = f"BUN-{uuid.uuid4().hex[:4].upper()}"
+                
+                p1 = start_node.get("position_2d", {"x": 0, "y": 0})
+                p2 = end_node.get("position_2d", {"x": 0, "y": 0})
+                approx_length = math.sqrt((p2["x"] - p1["x"])**2 + (p2["y"] - p1["y"])**2)
+                
+                bundle_data = {
+                    "bundle_id": new_bundle_id,
+                    "start_node_id": start_node["node_id"],
+                    "end_node_id": end_node["node_id"],
+                    "length_mm": round(approx_length, 1),
+                    "coverings": []
+                }
+                
+                # Mutate model state inside command scope
+                self.current_project.data["bundles"].append(bundle_data)
+                routed_bundles = [new_bundle_id]
+            else:
+                return
+
+        # 4. Add the wire object to the model
         wire_data = {
             "wire_id": wire_id,
             "signal_name": signal_name,
@@ -302,10 +371,12 @@ class HarnessEditorWindow(QMainWindow):
             "routed_bundle_ids": routed_bundles,
             "extra_length_mm": 20.0
         }
+        self.current_project.add_wire_object(wire_data)
 
-        command = AddWireCommand(self.current_project, wire_data, self.refresh_views)
+        # Finalize snapshot state and push onto undo stack
+        command.set_new_state()
         self.undo_stack.push(command)
-        self.statusBar().showMessage(f"Added wire {wire_id} across bundles {routed_bundles} (Undoable).")
+        self.statusBar().showMessage(f"Added wire {wire_id} (and bridge bundle if needed) successfully (Undoable).")
 
     def prompt_remove_wire(self):
         """Prompt user to select and remove an existing wire."""
