@@ -1,7 +1,7 @@
 import sys
 import os
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QAction, QMenuBar, QSplitter, QInputDialog, QUndoStack,QLineEdit,QDialog
+    QApplication, QMainWindow, QAction, QMenuBar, QSplitter, QInputDialog, QUndoStack,QLineEdit,QDialog,QFileDialog,QMessageBox
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QKeySequence
@@ -35,7 +35,43 @@ class HarnessEditorWindow(QMainWindow):
 
         # Populate Views
         self.refresh_views()
-
+        
+    def load_project_action(self):
+        """Opens a file dialog to load an existing harness project from SQLite or JSON."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, 
+            "Open Harness Project", 
+            "", 
+            "SQLite Database (*.db);;JSON Project Files (*.json);;All Files (*)"
+        )
+        
+        if file_path:
+            try:
+                project_data = {}
+                if file_path.endswith(".db"):
+                    project_data = DatabaseManager.load_project(file_path)
+                elif file_path.endswith(".json"):
+                    import json
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        project_data = json.load(f)
+                
+                if project_data:
+                    # Initialize project model with loaded data
+                    self.current_project = HarnessProjectModel(project_data)
+                    
+                    # Clear undo history stack for the new project state
+                    self.undo_stack.clear()
+                    
+                    # Refresh tree view and CAD canvas graphics
+                    self.refresh_views()
+                    
+                    self.statusBar().showMessage(f"Successfully loaded project from {file_path}")
+                else:
+                    QMessageBox.warning(self, "Load Warning", "The selected file contained no valid project data.")
+                    
+            except Exception as e:
+                QMessageBox.critical(self, "Load Error", f"Failed to load project file:\n{str(e)}")
+                
     def refresh_views(self):
         """Refreshes tree view and canvas whenever model state changes (undo/redo/edit)."""
         self.project_tree.load_project(self.current_project)
@@ -61,6 +97,7 @@ class HarnessEditorWindow(QMainWindow):
         self.cad_canvas = HarnessCADCanvas()
         self.cad_canvas.nodesMoved.connect(self.handle_nodes_moved)
         self.cad_canvas.nodeDeletionRequested.connect(self.remove_connector_action)
+        self.cad_canvas.tableMoved.connect(self.handle_table_moved)
         main_splitter.addWidget(self.cad_canvas)
         self.project_tree.entitySelected.connect(self.cad_canvas.highlight_entity)
         main_splitter.setSizes([350, 1050])
@@ -68,22 +105,37 @@ class HarnessEditorWindow(QMainWindow):
         self.statusBar().showMessage("Ready | Undo/Redo Engine Active")
 
     def _create_menus(self):
-        menu_bar = self.menubar = QMenuBar(self)
-        self.setMenuBar(menu_bar)
+        menubar = self.menuBar()
+        file_menu = menubar.addMenu("&File")
 
-        # File Menu
-        file_menu = menu_bar.addMenu("&File")
-        save_action = QAction("&Save Project", self)
-        save_action.triggered.connect(lambda: DatabaseManager.save_project(self.current_project.data))
-        file_menu.addAction(save_action)
+        # --- Local (JSON Format) ---
+        local_open_action = file_menu.addAction("Open Local Project (.json)...")
+        local_open_action.setShortcut("Ctrl+O")
+        local_open_action.triggered.connect(self.load_local_json_action)
+
+        local_save_action = file_menu.addAction("Save Local Project (.json)...")
+        local_save_action.setShortcut("Ctrl+S")
+        local_save_action.triggered.connect(self.save_local_json_action)
 
         file_menu.addSeparator()
-        exit_action = QAction("E&xit", self)
+
+        # --- Central (SQLite Database) ---
+        central_open_action = file_menu.addAction("Open Central Project (.db)...")
+        central_open_action.setShortcut("Ctrl+Shift+O")
+        central_open_action.triggered.connect(self.load_central_db_action)
+
+        central_save_action = file_menu.addAction("Save Central Project (.db)...")
+        central_save_action.setShortcut("Ctrl+Shift+S")
+        central_save_action.triggered.connect(self.save_central_db_action)
+
+        file_menu.addSeparator()
+
+        # --- Exit ---
+        exit_action = file_menu.addAction("E&xit")
         exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
 
         # Edit Menu (Connected to Undo Stack)
-        edit_menu = menu_bar.addMenu("&Edit")
+        edit_menu = menubar.addMenu("&Edit")
         
         # Create Undo action from undo stack
         undo_action = self.undo_stack.createUndoAction(self, "&Undo")
@@ -116,7 +168,7 @@ class HarnessEditorWindow(QMainWindow):
         break_bundle_action.triggered.connect(self.prompt_break_bundle)
         edit_menu.addAction(break_bundle_action)
         # Tools Menu
-        tools_menu = menu_bar.addMenu("&Tools")
+        tools_menu = menubar.addMenu("&Tools")
         drc_action = QAction("Run Design Rule Checker (DRC)", self)
         tools_menu.addAction(drc_action)
 
@@ -368,7 +420,7 @@ class HarnessEditorWindow(QMainWindow):
         self.undo_stack.push(command)
         
         # 4. Save to SQLite database and refresh views
-        DatabaseManager.save_project(self.current_project.data)
+        # DatabaseManager.save_project(self.current_project.data)
         self.refresh_views()
         self.statusBar().showMessage(f"Added connector {ref_designator} successfully.")
 
@@ -391,7 +443,7 @@ class HarnessEditorWindow(QMainWindow):
         self.undo_stack.push(command)
         
         # 4. Save to SQLite database and refresh views
-        DatabaseManager.save_project(self.current_project.data)
+        # DatabaseManager.save_project(self.current_project.data)
         self.refresh_views()
         self.statusBar().showMessage(f"Removed connector {node_id} and cleaned up attached pathways.")
     def remove_selected_node(self):
@@ -437,7 +489,7 @@ class HarnessEditorWindow(QMainWindow):
             self.undo_stack.push(command)
             
             # 5. Persist to SQLite database
-            DatabaseManager.save_project(self.current_project.data)
+            # DatabaseManager.save_project(self.current_project.data)
             
             # 6. Refresh Canvas and Tree View
             self.refresh_views()
@@ -475,11 +527,144 @@ class HarnessEditorWindow(QMainWindow):
             self.undo_stack.push(command)
             
             # 5. Save updated project state to the SQLite database cache
-            DatabaseManager.save_project(self.current_project.data)
+            # DatabaseManager.save_project(self.current_project.data)
             
             # 6. Refresh Canvas and Tree View
             self.refresh_views()
             self.statusBar().showMessage(f"Updated properties for wire {wire_id} (Undoable).")
+    def save_local_json_action(self):
+        """Saves the current harness project as a portable local JSON file."""
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Save Local Project (JSON)", "", "JSON Files (*.json);;All Files (*)"
+        )
+        if file_path:
+            try:
+                import json
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    # Use model's internal data dictionary formatted with indentation
+                    json.dump(self.current_project.data, f, indent=2)
+                self.statusBar().showMessage(f"Successfully saved local JSON project to {file_path}")
+            except Exception as e:
+                QMessageBox.critical(self, "Save Error", f"Failed to save local JSON file:\n{str(e)}")
+
+    def load_local_json_action(self):
+        """Loads a harness project from a portable local JSON file."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Open Local Project (JSON)", "", "JSON Files (*.json);;All Files (*)"
+        )
+        if file_path:
+            try:
+                import json
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    project_data = json.load(f)
+                
+                if project_data:
+                    self.current_project = HarnessProjectModel(project_data)
+                    self.undo_stack.clear()
+                    self.refresh_views()
+                    self.statusBar().showMessage(f"Successfully loaded local JSON project from {file_path}")
+                else:
+                    QMessageBox.warning(self, "Load Warning", "The selected JSON file is empty.")
+            except Exception as e:
+                QMessageBox.critical(self, "Load Error", f"Failed to parse local JSON file:\n{str(e)}")
+
+    def save_central_db_action(self):
+        """Saves the current harness project to a central SQLite database file."""
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Save Central Project (Database)", "", "SQLite Database (*.db);;All Files (*)"
+        )
+        if file_path:
+            try:
+                DatabaseManager.save_project(self.current_project.data, file_path)
+                self.statusBar().showMessage(f"Successfully saved central project to database {file_path}")
+            except Exception as e:
+                QMessageBox.critical(self, "Save Error", f"Failed to save to central database:\n{str(e)}")
+
+    def load_central_db_action(self):
+        """Opens a central database file, lists available projects, and loads the user's selection."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Open Central Database", "", "SQLite Database (*.db);;All Files (*)"
+        )
+        if file_path:
+            try:
+                # 1. Fetch available projects from database
+                projects = DatabaseManager.list_projects(file_path)
+                if not projects:
+                    QMessageBox.warning(self, "Central Database", "No valid projects found in the selected database.")
+                    return
+                
+                # 2. Open selection dialog
+                from ui.project_selector_dialog import ProjectSelectorDialog
+                dialog = ProjectSelectorDialog(projects, self)
+                
+                if dialog.exec_() == QDialog.Accepted and dialog.selected_project:
+                    project_data = dialog.selected_project.get("data")
+                    if project_data:
+                        # 3. Load selected project data into the model
+                        self.current_project = HarnessProjectModel(project_data)
+                        self.undo_stack.clear()
+                        self.refresh_views()
+                        
+                        proj_name = dialog.selected_project.get('project_name')
+                        self.statusBar().showMessage(f"Successfully loaded project '{proj_name}' from central database.")
+                    else:
+                        QMessageBox.warning(self, "Load Warning", "The selected project record contains empty data.")
+            except Exception as e:
+                QMessageBox.critical(self, "Database Error", f"Failed to load project from central database:\n{str(e)}")
+    def handle_table_moved(self, node_id: str, new_offset: dict):
+            """Records table movement in the model, pushes an undo command, and saves to database."""
+            from commands.harness_commands import ModifyHarnessCommand
+            
+            # 1. Instantiate command before state change to capture old_state
+            command = ModifyHarnessCommand(
+                self.current_project, 
+                f"Move Table ({node_id})", 
+                self.refresh_views
+            )
+            
+            # 2. Update offset in current project model
+            for node in self.current_project.data.get("nodes", []):
+                if node["node_id"] == node_id:
+                    if "table_config" not in node:
+                        node["table_config"] = {}
+                    node["table_config"]["offset_2d"] = new_offset
+                    break
+                    
+            # 3. Capture new_state and push to undo stack
+            command.set_new_state()
+            self.undo_stack.push(command)
+            
+            # 4. Save to SQLite database cache
+            DatabaseManager.save_project(self.current_project.data)
+            
+            self.statusBar().showMessage(f"Updated relative position for connector table {node_id} (Undoable).")
+    def handle_table_moved(self, node_id: str, new_offset: dict):
+        """Records table movement in the model, pushes an undo command, and saves to database."""
+        from commands.harness_commands import ModifyHarnessCommand
+        
+        # 1. Instantiate command before state change to capture old_state
+        command = ModifyHarnessCommand(
+            self.current_project, 
+            f"Move Table ({node_id})", 
+            self.refresh_views
+        )
+        
+        # 2. Update offset in current project model
+        for node in self.current_project.data.get("nodes", []):
+            if node["node_id"] == node_id:
+                if "table_config" not in node:
+                    node["table_config"] = {}
+                node["table_config"]["offset_2d"] = new_offset
+                break
+                
+        # 3. Capture new_state and push to undo stack
+        command.set_new_state()
+        self.undo_stack.push(command)
+        
+        # 4. Save to SQLite database cache
+        DatabaseManager.save_project(self.current_project.data)
+        
+        self.statusBar().showMessage(f"Updated relative position for connector table {node_id} (Undoable).")
 if __name__ == "__main__":
     init_db()
     app = QApplication(sys.argv)

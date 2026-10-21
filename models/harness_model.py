@@ -33,15 +33,39 @@ class HarnessProjectModel:
     def add_node(self, node_id: str, part_number: str, ref_designator: str, 
                  x: float, y: float, 
                  fb_x: Optional[float] = None, fb_y: Optional[float] = None, 
-                 pins: Optional[List[dict]] = None):
-        """Adds a physical node with dual drawing and 1:1 formboard coordinates."""
+                 pins: Optional[List[dict]] = None,
+                 table_config: Optional[dict] = None):
+        """Adds a physical node with dual coordinates and a flexible pin/wire table configuration."""
+        
+        # Default modifiable column structure for connector tables
+        default_columns = table_config.get("columns", [
+            {"id": "cavity", "label": "Cav", "width": 35},
+            {"id": "pin", "label": "Pin", "width": 35},
+            {"id": "signal", "label": "Signal", "width": 70},
+            {"id": "wire_id", "label": "Wire", "width": 60},
+            {"id": "color", "label": "Color", "width": 45}
+        ]) if table_config else [
+            {"id": "cavity", "label": "Cav", "width": 35},
+            {"id": "pin", "label": "Pin", "width": 35},
+            {"id": "signal", "label": "Signal", "width": 70},
+            {"id": "wire_id", "label": "Wire", "width": 60},
+            {"id": "color", "label": "Color", "width": 45}
+        ]
+
+        default_offset = table_config.get("offset_2d", {"x": 50, "y": -40}) if table_config else {"x": 50, "y": -40}
+
         node = {
             "node_id": node_id,
             "part_number": part_number,
             "ref_designator": ref_designator,
             "position_2d": {"x": x, "y": y},
             "formboard_position_2d": {"x": fb_x if fb_x is not None else x, "y": fb_y if fb_y is not None else y},
-            "pins": pins or []
+            "pins": pins or [],
+            "table_config": {
+                "offset_2d": default_offset,
+                "columns": default_columns,
+                "visible": True
+            }
         }
         self.data["nodes"].append(node)
 
