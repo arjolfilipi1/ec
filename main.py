@@ -1,5 +1,6 @@
 import sys
-import os
+import os,uuid
+
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QAction, QMenuBar, QSplitter, QInputDialog, QUndoStack,QLineEdit,QDialog,QFileDialog,QMessageBox
 )
@@ -79,8 +80,69 @@ class HarnessEditorWindow(QMainWindow):
 
     def _load_sample_data(self):
         """Loads a sample multi-branch harness project topology for demonstration[cite: 1]."""
-        self.current_project.data = {"project_id": "proj-9988-aabb", "project_name": "Engine Bay Harness - Model X", "revision": "B", "units": "MM_AWG", "nodes": [{"node_id": "node_ecu", "part_number": "CONN-ECU-48P", "ref_designator": "X1", "position_2d": {"x": 41.0, "y": -222.0}, "pins": [{"cavity_id": "1", "signal_name": "CAN_H", "insertion_depth_mm": 4.5}, {"cavity_id": "2", "signal_name": "CAN_L", "insertion_depth_mm": 4.5}]}, {"node_id": "node_sensor", "part_number": "CONN-SEN-3P", "ref_designator": "X2", "position_2d": {"x": 600.0, "y": 200.0}, "pins": [{"cavity_id": "A", "signal_name": "CAN_H", "insertion_depth_mm": 3.0}, {"cavity_id": "B", "signal_name": "CAN_L", "insertion_depth_mm": 3.0}]}, {"node_id": "node_x3", "part_number": "11", "ref_designator": "x3", "position_2d": {"x": 350.0, "y": 300.0}, "pins": [{"cavity_id": "1", "signal_name": "GND", "insertion_depth_mm": 3.5}]}, {"node_id": "node_junc_19F9", "part_number": "SPLICE-JUNCTION-GEN", "ref_designator": "J1", "position_2d": {"x": 320.5, "y": -11.0}, "pins": []}], "bundles": [{"bundle_id": "BUN-4424", "start_node_id": "node_ecu", "end_node_id": "node_junc_19F9", "length_mm": 225.0, "coverings": []}, {"bundle_id": "BUN-7405", "start_node_id": "node_junc_19F9", "end_node_id": "node_sensor", "length_mm": 225.0, "coverings": []}], "wires": [{"wire_id": "W-01", "signal_name": "CAN_H", "part_number": "WIRE-FLRY-0.5-YEL", "color": "Yellow", "endpoints": [{"node_id": "node_ecu", "cavity_id": "1"}, {"node_id": "node_sensor", "cavity_id": "A"}], "routed_bundle_ids": ["BUN-4424", "BUN-7405"], "extra_length_mm": 25.0}, {"wire_id": "W-02", "signal_name": "11", "part_number": "WIRE-FLRY-0.5-GEN", "color": "Blue", "endpoints": [{"node_id": "node_x3", "cavity_id": "1"}, {"node_id": "node_ecu", "cavity_id": "2"}], "routed_bundle_ids": [], "extra_length_mm": 20.0}]}
-        DatabaseManager.save_project(self.current_project.data)
+        self.current_project.data = {
+            "project_id": "proj-9988-aabb", 
+            "project_name": "Engine Bay Harness - Model X", 
+            "revision": "B", 
+            "units": "MM_AWG", 
+            "nodes": [
+                {
+                    "node_id": "node_ecu", 
+                    "part_number": "CONN-ECU-48P", 
+                    "ref_designator": "X1", 
+                    "position_2d": {"x": 41.0, "y": -222.0}, 
+                    "pins": [{"cavity_id": "1", "signal_name": "CAN_H", "insertion_depth_mm": 4.5}, {"cavity_id": "2", "signal_name": "CAN_L", "insertion_depth_mm": 4.5}]
+                }, 
+                {
+                    "node_id": "node_sensor", 
+                    "part_number": "CONN-SEN-3P", 
+                    "ref_designator": "X2", 
+                    "position_2d": {"x": 600.0, "y": 200.0}, 
+                    "pins": [{"cavity_id": "A", "signal_name": "CAN_H", "insertion_depth_mm": 3.0}, {"cavity_id": "B", "signal_name": "CAN_L", "insertion_depth_mm": 3.0}]
+                }, 
+                {
+                    "node_id": "node_x3", 
+                    "part_number": "CONN-X3-2P", 
+                    "ref_designator": "X3", 
+                    "position_2d": {"x": 350.0, "y": 300.0}, 
+                    "pins": [{"cavity_id": "1", "signal_name": "GND", "insertion_depth_mm": 3.5}]
+                }, 
+                {
+                    "node_id": "node_junc_19F9", 
+                    "part_number": "SPLICE-JUNCTION-GEN", 
+                    "ref_designator": "J1", 
+                    "position_2d": {"x": 320.5, "y": -11.0}, 
+                    "pins": []
+                }
+            ], 
+            "bundles": [
+                {"bundle_id": "BUN-4424", "start_node_id": "node_ecu", "end_node_id": "node_junc_19F9", "length_mm": 225.0, "coverings": []}, 
+                {"bundle_id": "BUN-7405", "start_node_id": "node_junc_19F9", "end_node_id": "node_sensor", "length_mm": 225.0, "coverings": []},
+                # Added physical bundle connecting node_x3 to the junction network
+                {"bundle_id": "BUN-9999", "start_node_id": "node_x3", "end_node_id": "node_junc_19F9", "length_mm": 180.0, "coverings": []}
+            ], 
+            "wires": [
+                {
+                    "wire_id": "W-01", 
+                    "signal_name": "CAN_H", 
+                    "part_number": "WIRE-FLRY-0.5-YEL", 
+                    "color": "Yellow", 
+                    "endpoints": [{"node_id": "node_ecu", "cavity_id": "1"}, {"node_id": "node_sensor", "cavity_id": "A"}], 
+                    "routed_bundle_ids": ["BUN-4424", "BUN-7405"], 
+                    "extra_length_mm": 25.0
+                }, 
+                {
+                    "wire_id": "W-02", 
+                    "signal_name": "GND", 
+                    "part_number": "WIRE-FLRY-0.5-GEN", 
+                    "color": "Blue", 
+                    "endpoints": [{"node_id": "node_x3", "cavity_id": "1"}, {"node_id": "node_ecu", "cavity_id": "2"}], 
+                    "routed_bundle_ids": ["BUN-9999", "BUN-4424"], # Now has a continuous connected path!
+                    "extra_length_mm": 20.0
+                }
+            ]
+        }
+        # DatabaseManager.save_project(self.current_project.data)
 
     def _init_ui(self):
         main_splitter = QSplitter(Qt.Horizontal)
@@ -89,6 +151,7 @@ class HarnessEditorWindow(QMainWindow):
         self.project_tree = HarnessProjectTreeView()
         self.project_tree.wireDoubleClicked.connect(self.show_wire_properties)
         self.project_tree.bundleDoubleClicked.connect(self.show_bundle_properties)
+        self.project_tree.nodeDoubleClicked.connect(self.show_connector_properties)
         main_splitter.addWidget(self.project_tree)
 
         # Center Drawing & Layout Engine Canvas Workspace
@@ -107,6 +170,12 @@ class HarnessEditorWindow(QMainWindow):
     def _create_menus(self):
         menubar = self.menuBar()
         file_menu = menubar.addMenu("&File")
+        # --- New Project Action ---
+        new_action = file_menu.addAction("&New Project...")
+        new_action.setShortcut("Ctrl+N")
+        new_action.triggered.connect(self.new_project_action)
+
+        file_menu.addSeparator()
 
         # --- Local (JSON Format) ---
         local_open_action = file_menu.addAction("Open Local Project (.json)...")
@@ -169,11 +238,27 @@ class HarnessEditorWindow(QMainWindow):
         edit_menu.addAction(break_bundle_action)
         # Tools Menu
         tools_menu = menubar.addMenu("&Tools")
+        routing_action = tools_menu.addAction("Wire Routing Manager...")
+        routing_action.triggered.connect(self.open_wire_routing_manager)
         drc_action = QAction("Run Design Rule Checker (DRC)", self)
         tools_menu.addAction(drc_action)
 
         formboard_action = QAction("Generate 1:1 Formboard", self)
         tools_menu.addAction(formboard_action)
+    def _init_toolbar(self):
+        """Optional: Adds quick-access buttons to a main window toolbar."""
+        toolbar = self.addToolBar("Main Toolbar")
+        toolbar.setMovable(False)
+
+        # New Project Toolbar Button
+        new_btn = toolbar.addAction("New")
+        new_btn.triggered.connect(self.new_project_action)
+
+        toolbar.addSeparator()
+
+        # Save Local Toolbar Button
+        save_btn = toolbar.addAction("Save Local")
+        save_btn.triggered.connect(self.save_local_json_action)
     def prompt_break_bundle(self):
         """Prompt user to select a bundle to break and specify a junction reference name."""
         bundles = self.current_project.data.get("bundles", [])
@@ -357,13 +442,11 @@ class HarnessEditorWindow(QMainWindow):
     def handle_nodes_moved(self, moved_data: dict):
         """Pushes a single batched movement command for all dragged nodes onto the undo stack."""
         from commands.harness_commands import ModifyHarnessCommand
-        print(moved_data)
         # Snapshot state before movement
         command = ModifyHarnessCommand(self.current_project, f"Move {len(moved_data)} Connector Node(s)", self.refresh_views)
         
         # Apply all positions to the model atomically
         for node_id, new_pos in moved_data.items():
-            print(node_id,new_pos)
             self.current_project.update_node_position(node_id, new_pos["x"], new_pos["y"])
             
         # Snapshot state after movement and push once
@@ -495,24 +578,22 @@ class HarnessEditorWindow(QMainWindow):
             self.refresh_views()
             self.statusBar().showMessage(f"Updated properties for bundle {bundle_id} (Undoable).")
     def show_wire_properties(self, wire_data: dict):
-        """Displays the properties dialog for a wire, updates the model by wire_id, and records on undo stack."""
+        """Displays the properties dialog for a wire, updates endpoints/attributes, and records on undo stack."""
         from ui.wire_dialog import WirePropertiesDialog
         from commands.harness_commands import ModifyHarnessCommand
         
         wire_id = wire_data.get("wire_id")
         
-        # 1. Instantiate the undo command to capture old_state BEFORE changes
         command = ModifyHarnessCommand(
             self.current_project, 
             f"Edit Wire Properties ({wire_id})", 
             self.refresh_views
         )
         
-        # 2. Open the wire properties dialog
-        dialog = WirePropertiesDialog(wire_data, self)
+        # Pass project model reference to dialog
+        dialog = WirePropertiesDialog(wire_data, project_model=self.current_project, parent=self)
         
         if dialog.exec_() == QDialog.Accepted:
-            # 3. Explicitly locate and update the wire in the project model by its unique ID
             for w in self.current_project.data.get("wires", []):
                 if w["wire_id"] == wire_id:
                     w["wire_id"] = wire_data.get("wire_id")
@@ -520,18 +601,14 @@ class HarnessEditorWindow(QMainWindow):
                     w["color"] = wire_data.get("color")
                     w["gauge"] = wire_data.get("gauge")
                     w["extra_length_mm"] = wire_data.get("extra_length_mm")
+                    w["endpoints"] = wire_data.get("endpoints")
                     break
             
-            # 4. Capture new_state AFTER modifications and push to undo stack
             command.set_new_state()
             self.undo_stack.push(command)
-            
-            # 5. Save updated project state to the SQLite database cache
             # DatabaseManager.save_project(self.current_project.data)
-            
-            # 6. Refresh Canvas and Tree View
             self.refresh_views()
-            self.statusBar().showMessage(f"Updated properties for wire {wire_id} (Undoable).")
+            self.statusBar().showMessage(f"Updated properties and endpoints for wire {wire_id} (Undoable).")
     def save_local_json_action(self):
         """Saves the current harness project as a portable local JSON file."""
         file_path, _ = QFileDialog.getSaveFileName(
@@ -635,7 +712,7 @@ class HarnessEditorWindow(QMainWindow):
             self.undo_stack.push(command)
             
             # 4. Save to SQLite database cache
-            DatabaseManager.save_project(self.current_project.data)
+            # DatabaseManager.save_project(self.current_project.data)
             
             self.statusBar().showMessage(f"Updated relative position for connector table {node_id} (Undoable).")
     def handle_table_moved(self, node_id: str, new_offset: dict):
@@ -662,9 +739,100 @@ class HarnessEditorWindow(QMainWindow):
         self.undo_stack.push(command)
         
         # 4. Save to SQLite database cache
-        DatabaseManager.save_project(self.current_project.data)
+        # DatabaseManager.save_project(self.current_project.data)
         
         self.statusBar().showMessage(f"Updated relative position for connector table {node_id} (Undoable).")
+    def open_wire_routing_manager(self):
+        """Opens the interactive wire routing and pathfinding manager dialog."""
+        from ui.wire_routing_dialog import WireRoutingManagerDialog
+        from commands.harness_commands import ModifyHarnessCommand
+        
+        command = ModifyHarnessCommand(
+            self.current_project, 
+            "Update Wire Routing Paths", 
+            self.refresh_views
+        )
+        
+        dialog = WireRoutingManagerDialog(self.current_project, self)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            command.set_new_state()
+            self.undo_stack.push(command)
+            # DatabaseManager.save_project(self.current_project.data)
+            self.refresh_views()
+            self.statusBar().showMessage("Updated wire routing pathways successfully.")
+    def new_project_action(self):
+        """Creates a brand new empty harness project with prompt safeguard."""
+        # Optional safeguard if current project has items
+        if self.current_project and (self.current_project.data.get("nodes") or self.current_project.data.get("wires")):
+            reply = QMessageBox.question(
+                self, 
+                "New Project", 
+                "Create a new project? Any unsaved changes will be lost.",
+                QMessageBox.Yes | QMessageBox.No, 
+                QMessageBox.No
+            )
+            if reply == QMessageBox.No:
+                return
+
+        # Initialize fresh default project structure
+        fresh_data = {
+            "project_id": f"proj-{uuid.uuid4().hex[:8]}",
+            "project_name": "New Harness Project",
+            "revision": "A",
+            "units": "MM_AWG",
+            "nodes": [],
+            "bundles": [],
+            "wires": [],
+            "cables": []
+        }
+        
+        self.current_project = HarnessProjectModel(fresh_data)
+        
+        # Clear undo history stack for the clean project state
+        self.undo_stack.clear()
+        
+        # Refresh tree view and CAD canvas graphics
+        self.refresh_views()
+        
+        self.statusBar().showMessage("Created new harness project.")
+    def show_connector_properties(self, node_data: dict):
+        """Displays properties & cavity manager dialog for a connector node, recording changes on the undo stack."""
+        from ui.connector_dialog import ConnectorPropertiesDialog
+        from commands.harness_commands import ModifyHarnessCommand
+        
+        node_id = node_data.get("node_id")
+        
+        # 1. Instantiate command before changes to capture old_state
+        command = ModifyHarnessCommand(
+            self.current_project, 
+            f"Edit Node & Cavities ({node_data.get('ref_designator')})", 
+            self.refresh_views
+        )
+        
+        # 2. Open dialog
+        dialog = ConnectorPropertiesDialog(node_data, self)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            # 3. Explicitly find and update the node in the project model by its ID
+            for n in self.current_project.data.get("nodes", []):
+                if n["node_id"] == node_id:
+                    n["ref_designator"] = node_data.get("ref_designator")
+                    n["part_number"] = node_data.get("part_number")
+                    n["pins"] = node_data.get("pins")
+                    n["is_junction"] = node_data.get("is_junction")  # <--- Added this line!
+                    break
+            
+            # 4. Capture new_state and push to undo stack
+            command.set_new_state()
+            self.undo_stack.push(command)
+            
+            # 5. Save to SQLite database
+            DatabaseManager.save_project(self.current_project.data)
+            
+            # 6. Refresh Canvas and Tree View
+            self.refresh_views()
+            self.statusBar().showMessage(f"Updated properties for node {node_id} (Undoable).")
 if __name__ == "__main__":
     init_db()
     app = QApplication(sys.argv)

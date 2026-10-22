@@ -34,23 +34,28 @@ class HarnessProjectModel:
                  x: float, y: float, 
                  fb_x: Optional[float] = None, fb_y: Optional[float] = None, 
                  pins: Optional[List[dict]] = None,
-                 table_config: Optional[dict] = None):
-        """Adds a physical node with dual coordinates and a flexible pin/wire table configuration."""
+                 table_config: Optional[dict] = None,
+                 is_junction: bool = False):
+        """Adds a physical node with explicit is_junction designation."""
         
-        # Default modifiable column structure for connector tables
-        default_columns = table_config.get("columns", [
-            {"id": "cavity", "label": "Cav", "width": 35},
-            {"id": "pin", "label": "Pin", "width": 35},
-            {"id": "signal", "label": "Signal", "width": 70},
-            {"id": "wire_id", "label": "Wire", "width": 60},
-            {"id": "color", "label": "Color", "width": 45}
-        ]) if table_config else [
-            {"id": "cavity", "label": "Cav", "width": 35},
-            {"id": "pin", "label": "Pin", "width": 35},
-            {"id": "signal", "label": "Signal", "width": 70},
-            {"id": "wire_id", "label": "Wire", "width": 60},
-            {"id": "color", "label": "Color", "width": 45}
-        ]
+        default_columns = table_config.get("columns", []) if table_config else []
+        if not default_columns:
+            if is_junction:
+                default_columns = [
+                    {"id": "cavity_id", "label": "Port", "width": 35},
+                    {"id": "side", "label": "Side", "width": 45},
+                    {"id": "signal", "label": "Signal", "width": 70},
+                    {"id": "wire_id", "label": "Wire", "width": 60},
+                    {"id": "color", "label": "Color", "width": 45}
+                ]
+            else:
+                default_columns = [
+                    {"id": "cavity", "label": "Cav", "width": 35},
+                    {"id": "pin", "label": "Pin", "width": 35},
+                    {"id": "signal", "label": "Signal", "width": 70},
+                    {"id": "wire_id", "label": "Wire", "width": 60},
+                    {"id": "color", "label": "Color", "width": 45}
+                ]
 
         default_offset = table_config.get("offset_2d", {"x": 50, "y": -40}) if table_config else {"x": 50, "y": -40}
 
@@ -61,6 +66,7 @@ class HarnessProjectModel:
             "position_2d": {"x": x, "y": y},
             "formboard_position_2d": {"x": fb_x if fb_x is not None else x, "y": fb_y if fb_y is not None else y},
             "pins": pins or [],
+            "is_junction": is_junction, # Explicit boolean flag
             "table_config": {
                 "offset_2d": default_offset,
                 "columns": default_columns,

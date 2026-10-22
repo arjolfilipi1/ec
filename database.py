@@ -114,6 +114,55 @@ class DatabaseManager:
                     "data": {}
                 })
         return projects
+    @staticmethod
+    def init_color_table(db_path: str = "harness_project.db"):
+        """Initializes the master colors lookup table in SQLite with default automotive color codes."""
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS colors (
+                code TEXT PRIMARY KEY,
+                name TEXT,
+                hex_value TEXT
+            )
+        ''')
+        # Seed default colors if the table is empty
+        cursor.execute("SELECT COUNT(*) FROM colors")
+        if cursor.fetchone()[0] == 0:
+            defaults = [
+                ("BK", "Black", "#2C3E50"),
+                ("RD", "Red", "#E74C3C"),
+                ("YE", "Yellow", "#F1C40F"),
+                ("BU", "Blue", "#2980B9"),
+                ("WH", "White", "#7F8C8D"),
+                ("GN", "Green", "#27AE60"),
+                ("BN", "Brown", "#A04000"),
+                ("VT", "Violet", "#8E44AD")
+            ]
+            cursor.executemany("INSERT OR IGNORE INTO colors (code, name, hex_value) VALUES (?, ?, ?)", defaults)
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def get_colors(db_path: str = "harness_project.db") -> list:
+        """Retrieves all available wire colors from the database."""
+        DatabaseManager.init_color_table(db_path)
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT code, name, hex_value FROM colors ORDER BY name;")
+        rows = cursor.fetchall()
+        conn.close()
+        return [{"code": r[0], "name": r[1], "hex_value": r[2]} for r in rows]
+
+    @staticmethod
+    def add_color(code: str, name: str, hex_value: str, db_path: str = "harness_project.db"):
+        """Adds a new custom color definition to the database."""
+        DatabaseManager.init_color_table(db_path)
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("INSERT OR REPLACE INTO colors (code, name, hex_value) VALUES (?, ?, ?)", (code.upper(), name, hex_value))
+        conn.commit()
+        conn.close()
 if __name__ == "__main__":
     init_db()
     print("Database initialized successfully.")

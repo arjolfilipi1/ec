@@ -1,88 +1,140 @@
 from PyQt5.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem, QGraphicsItem,
-                                QGraphicsLineItem,QGraphicsEllipseItem)
+                                QGraphicsLineItem,QGraphicsEllipseItem,QGraphicsItemGroup)
 from PyQt5.QtCore import Qt, QPointF, pyqtSignal
 from PyQt5.QtGui import QPen, QBrush, QColor, QFont, QWheelEvent, QPainter
 from models.harness_model import HarnessProjectModel
 import math
-
+from database import DatabaseManager
 class ConnectorTableGraphicsItem(QGraphicsRectItem):
-    """Visual table attached to a connector node displaying pin/wire mappings and pairings."""
+    """Visual table attached to a connector or splice junction node displaying pin/wire mappings and sides."""
     
     def __init__(self, node_id: str, node_data: dict, project_model=None):
         super().__init__()
+        self.node_id = node_id
         self.node_data = node_data
         self.project_model = project_model
-        self.node_id = node_id
+        
         self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.setFlag(QGraphicsItem.ItemIsMovable)
         self.setFlag(QGraphicsItem.ItemSendsGeometryChanges)
         
-        offset = node_data.get("table_config", {}).get("offset_2d", {"x": 50, "y": -40})
-        self.setPos(offset["x"], offset["y"])
-        self.setPen(QPen(QColor(127, 140, 141), 1, Qt.SolidLine))
-        
-        self.setBrush(QBrush(QColor(255, 255, 255, 245)))
         self.refresh_layout()
-    def mousePressEvent(self, event):
-        self.initial_scene_pos = self.pos()
-        super().mousePressEvent(event)
-    def mouseReleaseEvent(self, event):
-        super().mouseReleaseEvent(event)
-        new_scene_pos = self.scenePos()
-        
-        if new_scene_pos != self.initial_scene_pos:
-            # Find parent node to calculate new relative offset (dx, dy)
-            canvas = self.scene().views()[0] if self.scene() and self.scene().views() else None
-            if canvas and self.node_id in canvas.node_items:
-                node_item = canvas.node_items[self.node_id]
-                node_center = node_item.sceneBoundingRect().center()
-                
-                # Compute relative offset from node center
-                rel_x = new_scene_pos.x() - node_center.x()
-                rel_y = new_scene_pos.y() - node_center.y()
-                
-                if hasattr(canvas, "tableMoved"):
-                    canvas.tableMoved.emit(self.node_id, {"x": round(rel_x, 1), "y": round(rel_y, 1)})
+
     def refresh_layout(self):
-        """Redraws table headers and maps wire endpoints to node cavity/pin rows with safe fallbacks."""
+        """Redraws table headers and maps wire endpoints/sides to rows with safe fallbacks and geometric left/right splice orientation."""
         for child in self.childItems():
             if child.scene():
                 child.scene().removeItem(child)
 
         config = self.node_data.get("table_config", {})
+        ref_des = self.node_data.get("ref_designator", "X")
+        part_num = self.node_data.get("part_number", "")
+        node_id = self.node_data.get("node_id")
         
-        # 1. Fallback default columns if missing or empty
+        # Explicit boolean check instead of string matching
+        is_junction = self.node_data.get("is_junction", False)
+        print(node_id,is_junction)
+        # Define columns based on node type
         columns = config.get("columns", [])
         if not columns:
-            columns = [
-                {"id": "cavity", "label": "Cav", "width": 35},
-                {"id": "pin", "label": "Pin", "width": 35},
-                {"id": "signal", "label": "Signal", "width": 70},
-                {"id": "wire_id", "label": "Wire", "width": 60},
-                {"id": "color", "label": "Color", "width": 45}
-            ]
+            if is_junction:
+                columns = [
+                    {"id": "cavity_id", "label": "Port", "width": 50},
+                    {"id": "side", "label": "Side", "width": 70},
+                    {"id": "signal", "label": "Signal", "width": 70},
+                    {"id": "wire_id", "label": "Wire", "width": 60},
+                    {"id": "color", "label": "Color", "width": 45}
+                ]
+            else:
+                columns = [
+                    {"id": "cavity", "label": "Cav", "width": 35},
+                    {"id": "pin", "label": "Pin", "width": 35},
+                    {"id": "signal", "label": "Signal", "width": 70},
+                    {"id": "wire_id", "label": "Wire", "width": 60},
+                    {"id": "color", "label": "Color", "width": 45}
+                ]
+        print(columns)
+        row_data_list = []
+        if is_junction:
+            row_data_list = []
+        row_data_list = []
+        if is_junction:
+            node_id = self.node_data.get("node_id")
+            node_pos = self.node_data.get("position_2d", {"x": 0, "y": 0})
+            jx = node_pos.get("x", 0)
 
-        # 2. Fallback default pins if missing or empty so the table expands properly
-        pins = self.node_data.get("pins", [])
-        if not pins:
-            pins = [
-                {"cavity_id": "1", "pin_number": "1"}, 
-                {"cavity_id": "2", "pin_number": "2"}
-            ]
+            node_map = {}
+            if self.project_model:
+                node_map = {n["node_id"]: n for n in self.project_model.data.get("nodes", [])}
+                
+                for w in self.project_model.data.get("wires", []):
+                    endpoints = w.get("endpoints", [])
+                    
+                    # STRICT CHECK: Only include wires connected directly to this splice endpoint
+                    is_endpoint = False
+                    junction_cavity = "X"  # Standard default splice cavity designation
+                    
+                    for ep in endpoints:
+                        if ep.get("node_id") == node_id:
+                            is_endpoint = True
+                            # Retrieve the cavity/pin designation if defined (e.g. "X", "1", "A")
+                            junction_cavity = ep.get("cavity_id", "X")
+                            break
+                    
+                    if is_endpoint:
+                        # Determine Left or Right side based on the other endpoint node's X position
+                        assigned_side = "Unknown"
+                        for ep in endpoints:
+                            other_node_id = ep.get("node_id")
+                            if other_node_id and other_node_id != node_id and other_node_id in node_map:
+                                o_pos = node_map[other_node_id].get("position_2d", {"x": 0, "y": 0})
+                                assigned_side = "Left" if o_pos.get("x", 0) < jx else "Right"
+                                break
+                        
+                        row_data_list.append({
+                            "cavity_id": junction_cavity, # Displays proper cavity/pin designation ("X")
+                            "side": assigned_side,
+                            "signal": w.get("signal_name", ""),
+                            "wire_id": w.get("wire_id", ""),
+                            "color": w.get("color", "")
+                        })
 
-        ref_des = self.node_data.get("ref_designator", "X")
-        node_id = self.node_data.get("node_id")
+            if not row_data_list:
+                row_data_list = [{"cavity_id": "-", "side": "-", "signal": "No Wires", "wire_id": "-", "color": "-"}]
+        else:
+            pins = self.node_data.get("pins", [])
+            if not pins:
+                pins = [{"cavity_id": "1", "pin_number": "1"}, {"cavity_id": "2", "pin_number": "2"}]
+            
+            wire_map = {}
+            if self.project_model:
+                for w in self.project_model.data.get("wires", []):
+                    for ep in w.get("endpoints", []):
+                        if ep.get("node_id") == node_id:
+                            wire_map.setdefault(ep.get("cavity_id"), []).append(w)
 
-        # Header Title (Connector Name)
+            for pin in pins:
+                cav_id = pin.get("cavity_id", "1")
+                pin_num = pin.get("pin_number", cav_id)
+                connected_wires = wire_map.get(cav_id, [])
+                row_data_list.append({
+                    "cavity": cav_id,
+                    "pin": pin_num,
+                    "signal": " / ".join([w.get("signal_name", "") for w in connected_wires if w.get("signal_name")]),
+                    "wire_id": " / ".join([w.get("wire_id", "") for w in connected_wires]),
+                    "color": " / ".join([w.get("color", "") for w in connected_wires if w.get("color")])
+                })
+
+        # Header Title (Connector / Junction Name)
         header_text = QGraphicsTextItem(ref_des, self)
-        header_text.setDefaultTextColor(QColor(41, 128, 185))
+        header_text.setDefaultTextColor(QColor(180, 100, 0) if is_junction else QColor(41, 128, 185))
         header_text.setFont(QFont("Segoe UI", 9, QFont.Bold))
-        header_text.setPos(4, 2)
+        header_text.setPos(-5, -20)
 
         total_width = sum(col.get("width", 50) for col in columns)
         row_height = 18
         header_height = 22
-        total_height = header_height + (len(pins) * row_height)
+        total_height = header_height + (len(row_data_list) * row_height)
         
         self.setRect(0, 0, total_width, total_height)
 
@@ -91,49 +143,21 @@ class ConnectorTableGraphicsItem(QGraphicsRectItem):
         for col in columns:
             col_width = col.get("width", 50)
             col_label = col.get("label", "")
-            
             lbl = QGraphicsTextItem(col_label, self)
             lbl.setFont(QFont("Segoe UI", 8, QFont.Bold))
             lbl.setDefaultTextColor(QColor(52, 73, 94))
             lbl.setPos(current_x + 2, header_height - 18)
             current_x += col_width
 
-        # Build map of wires connected to this node's cavities
-        wire_map = {}
-        if self.project_model:
-            for w in self.project_model.data.get("wires", []):
-                for ep in w.get("endpoints", []):
-                    if ep.get("node_id") == node_id:
-                        wire_map[ep.get("cavity_id")] = w
-
-        # Draw Rows for Each Pin / Cavity
-        for row_idx, pin in enumerate(pins):
+        # Draw Data Rows
+        for row_idx, row_item in enumerate(row_data_list):
             y_pos = header_height + (row_idx * row_height)
-            cavity_id = pin.get("cavity_id", str(row_idx + 1))
-            pin_num = pin.get("pin_number", cavity_id)
-            
-            connected_wire = wire_map.get(cavity_id, {})
-            signal = connected_wire.get("signal_name", "")
-            wire_id = connected_wire.get("wire_id", "")
-            color = connected_wire.get("color", "")
-
             current_x = 0
             for col in columns:
                 col_id = col.get("id")
                 col_width = col.get("width", 50)
                 
-                val = ""
-                if col_id == "cavity":
-                    val = str(cavity_id)
-                elif col_id == "pin":
-                    val = str(pin_num)
-                elif col_id == "signal":
-                    val = str(signal)
-                elif col_id == "wire_id":
-                    val = str(wire_id)
-                elif col_id == "color":
-                    val = str(color)
-
+                val = str(row_item.get(col_id, ""))
                 if val:
                     cell_text = QGraphicsTextItem(val, self)
                     cell_text.setFont(QFont("Segoe UI", 8))
@@ -141,7 +165,25 @@ class ConnectorTableGraphicsItem(QGraphicsRectItem):
                     cell_text.setPos(current_x + 2, y_pos)
                 
                 current_x += col_width
+    def mousePressEvent(self, event):
+        self.initial_scene_pos = self.scenePos()
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        new_scene_pos = self.scenePos()
         
+        if new_scene_pos != self.initial_scene_pos:
+            canvas = self.scene().views()[0] if self.scene() and self.scene().views() else None
+            if canvas and self.node_id in canvas.node_items:
+                node_item = canvas.node_items[self.node_id]
+                node_center = node_item.sceneBoundingRect().center()
+                
+                rel_x = new_scene_pos.x() - node_center.x()
+                rel_y = new_scene_pos.y() - node_center.y()
+                
+                if hasattr(canvas, "tableMoved"):
+                    canvas.tableMoved.emit(self.node_id, {"x": round(rel_x, 1), "y": round(rel_y, 1)})
 class NodeGraphicsItem(QGraphicsRectItem):
     """Custom interactive rectangle representing a physical connector node."""
     def __init__(self, node_id, x, y, width, height, label_text, canvas_ref):
@@ -254,27 +296,44 @@ class BundleGraphicsItem(QGraphicsLineItem):
                               mid_y + ny * offset_dist - self.label.boundingRect().height() / 2)
 
 
-class WireGraphicsItem(QGraphicsLineItem):
-    """Custom interactive graphics item representing an electrical wire trace."""
-    def __init__(self, wire_id, color_str, canvas_ref):
+class WireGraphicsItem(QGraphicsItemGroup):
+    """Custom interactive graphics item representing an electrical wire trace with base and stripe colors."""
+    def __init__(self, wire_id, color_code, stripe_code, canvas_ref):
         super().__init__()
         self.wire_id = wire_id
         self.canvas_ref = canvas_ref
         
         self.setFlag(QGraphicsItem.ItemIsSelectable)
         
-        wire_colors = {
-            "Yellow": QColor(241, 196, 15),
-            "Blue/White": QColor(41, 128, 185),
-            "White": QColor(0, 0, 0),
-            "Red": QColor(231, 76, 60),
-            "Black": QColor(44, 62, 80)
-        }
-        color = wire_colors.get(color_str, QColor(127, 140, 141))
-        self.setPen(QPen(color, 2, Qt.DashLine))
+        # Fetch color map from database
+        color_map = {c['code']: c['hex_value'] for c in DatabaseManager.get_colors()}
+        
+        base_hex = color_map.get(str(color_code).upper(), "#7F8C8D")
+        stripe_hex = color_map.get(str(stripe_code).upper(), "") if stripe_code else ""
+
+        # Primary base line
+        self.base_line = QGraphicsLineItem()
+        self.base_line.setPen(QPen(QColor(base_hex), 3, Qt.SolidLine))
+        self.addToGroup(self.base_line)
+
+        # Secondary stripe overlay line (if dual-color is specified)
+        if stripe_hex:
+            self.stripe_line = QGraphicsLineItem()
+            # Render stripe as a dashed contrasting center line
+            self.stripe_line.setPen(QPen(QColor(stripe_hex), 1.5, Qt.DashLine))
+            self.addToGroup(self.stripe_line)
+        else:
+            self.stripe_line = None
 
     def update_geometry(self, p1: QPointF, p2: QPointF, offset: float):
-        self.setLine(p1.x() + offset, p1.y() + offset, p2.x() + offset, p2.y() + offset)
+        ox1 = p1.x() + offset
+        oy1 = p1.y() + offset
+        ox2 = p2.x() + offset
+        oy2 = p2.y() + offset
+        
+        self.base_line.setLine(ox1, oy1, ox2, oy2)
+        if self.stripe_line:
+            self.stripe_line.setLine(ox1, oy1, ox2, oy2)
 
 class HarnessCADCanvas(QGraphicsView):
     """Interactive 2D vector graphics workspace for harness schematic and formboard layout[cite: 1]."""
@@ -321,27 +380,34 @@ class HarnessCADCanvas(QGraphicsView):
             x, y = pos["x"], pos["y"]
             label_str = f"{node.get('ref_designator')}\n{node.get('part_number')}"
             
-            ref_des = node.get("ref_designator", "")
             n_id = node["node_id"]
-            part_num = node.get("part_number", "")
+            is_junction = node.get("is_junction", False) # Clean explicit boolean check
             
-            if "SPLICE" in part_num or ref_des.startswith(("Z", "J")) or "junc" in n_id or "z" in n_id.lower():
+            if is_junction:
                 node_item = JunctionGraphicsItem(n_id, x, y, 45, label_str, self)
                 self.scene.addItem(node_item)
             else:
                 node_item = NodeGraphicsItem(n_id, x, y, 90, 60, label_str, self)
                 self.scene.addItem(node_item)
                 
-                # Add independent connector table
-                table_config = node.get("table_config", {})
-                if table_config.get("visible", True):
-                    table_item = ConnectorTableGraphicsItem(n_id, node, project_model=project_model)
-                    # Position table at Node Center + relative offset
-                    offset = table_config.get("offset_2d", {"x": 50, "y": -40})
-                    table_item.setPos(x + offset["x"], y + offset["y"])
-                    
-                    self.scene.addItem(table_item)
-                    self.table_items[n_id] = table_item
+            table_config = node.get("table_config", {})
+            show_table = table_config.get("visible", True)
+            
+            if is_junction and project_model:
+                wire_count = 0
+                for w in project_model.data.get("wires", []):
+                    for ep in w.get("endpoints", []):
+                        if ep.get("node_id") == n_id:
+                            wire_count += 1
+                if wire_count == 0:
+                    show_table = False
+
+            if show_table:
+                table_item = ConnectorTableGraphicsItem(n_id, node, project_model=project_model)
+                offset = table_config.get("offset_2d", {"x": 50, "y": -40})
+                table_item.setPos(x + offset["x"], y + offset["y"])
+                self.scene.addItem(table_item)
+                self.table_items[n_id] = table_item
                 
             self.node_items[n_id] = node_item
 
@@ -359,9 +425,13 @@ class HarnessCADCanvas(QGraphicsView):
 
         # 3. Create Persistent Wire Trace Items
         for wire in data.get("wires", []):
-            w_item = WireGraphicsItem(wire["wire_id"], wire.get("color", "Black"), self)
+            w_id = wire["wire_id"]
+            base_col = wire.get("color", "BK")
+            stripe_col = wire.get("stripe_color", "")
+            
+            w_item = WireGraphicsItem(w_id, base_col, stripe_col, self)
             self.scene.addItem(w_item)
-            self.wire_items[wire["wire_id"]] = w_item
+            self.wire_items[w_id] = w_item
 
         self.update_geometries()
     def keyPressEvent(self, event):

@@ -7,6 +7,7 @@ class HarnessProjectTreeView(QTreeView):
     """Renders the hierarchical harness project structure (Nodes, Bundles, Wires)."""
     wireDoubleClicked = pyqtSignal(dict)
     bundleDoubleClicked = pyqtSignal(dict)
+    nodeDoubleClicked = pyqtSignal(dict)
     entitySelected = pyqtSignal(dict)
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -37,7 +38,7 @@ class HarnessProjectTreeView(QTreeView):
             n_item = QStandardItem(node_label)
             n_item.setEditable(False)
             # Attach node metadata (Role 32 = UserRole)
-            n_item.setData({"type": "node", "id": node["node_id"]}, 32)
+            n_item.setData({"type": "node", "node_data": node, "id": node["node_id"]}, 32)
             
             for pin in node.get("pins", []):
                 pin_label = f"Pin/Cavity {pin.get('cavity_id')} -> Signal: {pin.get('signal_name', 'Unassigned')}"
@@ -72,7 +73,12 @@ class HarnessProjectTreeView(QTreeView):
             wires_item.appendRow(w_item)
             
         root_item.appendRow(wires_item)
-        self.expandAll()
+        self.expand(root_item.index())
+        self.expand(nodes_item.index())
+        
+        # Explicitly keep bundles and wires collapsed
+        self.collapse(bundles_item.index())
+        self.collapse(wires_item.index())
 
     def _on_item_clicked(self, index):
         """Triggered when any tree item is clicked."""
@@ -90,4 +96,6 @@ class HarnessProjectTreeView(QTreeView):
                     self.wireDoubleClicked.emit(payload.get("wire_data"))
                 elif payload.get("type") == "bundle":
                     self.bundleDoubleClicked.emit(payload.get("bundle_data"))
+                elif payload.get("type") == "node":
+                    self.nodeDoubleClicked.emit(payload.get("node_data"))  # Emit node data on double click
                     

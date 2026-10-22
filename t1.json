@@ -1,133 +1,155 @@
 {
-  "bundles": [
-    {
-      "bundle_id": "BUN-4424",
-      "coverings": [],
-      "end_node_id": "node_junc_19F9",
-      "length_mm": 225.0,
-      "start_node_id": "node_ecu"
-    },
-    {
-      "bundle_id": "BUN-7405",
-      "coverings": [],
-      "end_node_id": "node_sensor",
-      "length_mm": 225.0,
-      "start_node_id": "node_junc_19F9"
-    }
-  ],
-  "nodes": [
-    {
-      "node_id": "node_ecu",
-      "part_number": "CONN-ECU-48P",
-      "pins": [
-        {
-          "cavity_id": "1",
-          "insertion_depth_mm": 4.5,
-          "signal_name": "CAN_H"
-        },
-        {
-          "cavity_id": "2",
-          "insertion_depth_mm": 4.5,
-          "signal_name": "CAN_L"
-        }
-      ],
-      "position_2d": {
-        "x": -65.0,
-        "y": 48.0
-      },
-      "ref_designator": "X1"
-    },
-    {
-      "node_id": "node_sensor",
-      "part_number": "CONN-SEN-3P",
-      "pins": [
-        {
-          "cavity_id": "A",
-          "insertion_depth_mm": 3.0,
-          "signal_name": "CAN_H"
-        },
-        {
-          "cavity_id": "B",
-          "insertion_depth_mm": 3.0,
-          "signal_name": "CAN_L"
-        }
-      ],
-      "position_2d": {
-        "x": 600.0,
-        "y": 200.0
-      },
-      "ref_designator": "X2"
-    },
-    {
-      "node_id": "node_x3",
-      "part_number": "11",
-      "pins": [
-        {
-          "cavity_id": "1",
-          "insertion_depth_mm": 3.5,
-          "signal_name": "GND"
-        }
-      ],
-      "position_2d": {
-        "x": 350.0,
-        "y": 300.0
-      },
-      "ref_designator": "x3"
-    },
-    {
-      "node_id": "node_junc_19F9",
-      "part_number": "SPLICE-JUNCTION-GEN",
-      "pins": [],
-      "position_2d": {
-        "x": 320.5,
-        "y": -11.0
-      },
-      "ref_designator": "J1"
-    }
-  ],
   "project_id": "proj-9988-aabb",
   "project_name": "Engine Bay Harness - Model X",
   "revision": "B",
   "units": "MM_AWG",
+  "nodes": [
+    {
+      "node_id": "node_ecu",
+      "part_number": "CONN-ECU-48P",
+      "ref_designator": "X1",
+      "position_2d": {
+        "x": 210.0,
+        "y": -182.0
+      },
+      "pins": [
+        {
+          "cavity_id": "1",
+          "signal_name": "CAN_H",
+          "insertion_depth_mm": 4.5
+        },
+        {
+          "cavity_id": "2",
+          "signal_name": "CAN_L",
+          "insertion_depth_mm": 4.5
+        }
+      ],
+      "table_config": {
+        "offset_2d": {
+          "x": 227.0,
+          "y": -110.0
+        }
+      }
+    },
+    {
+      "node_id": "node_sensor",
+      "part_number": "CONN-SEN-3P",
+      "ref_designator": "X2",
+      "position_2d": {
+        "x": 781.0,
+        "y": -18.0
+      },
+      "pins": [
+        {
+          "cavity_id": "A",
+          "signal_name": "CAN_H",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "B",
+          "signal_name": "CAN_L",
+          "insertion_depth_mm": 3.0
+        }
+      ],
+      "table_config": {
+        "offset_2d": {
+          "x": 58.0,
+          "y": -176.0
+        }
+      }
+    },
+    {
+      "node_id": "node_x3",
+      "part_number": "CONN-X3-2P",
+      "ref_designator": "X3",
+      "position_2d": {
+        "x": 346.0,
+        "y": 280.0
+      },
+      "pins": [
+        {
+          "cavity_id": "1",
+          "signal_name": "GND",
+          "insertion_depth_mm": 3.5
+        }
+      ]
+    },
+    {
+      "node_id": "node_junc_19F9",
+      "part_number": "SPLICE-JUNCTION-GEN",
+      "ref_designator": "J1",
+      "position_2d": {
+        "x": 320.5,
+        "y": -11.0
+      },
+      "pins": []
+    }
+  ],
+  "bundles": [
+    {
+      "bundle_id": "BUN-4424",
+      "start_node_id": "node_ecu",
+      "end_node_id": "node_junc_19F9",
+      "length_mm": 225.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-7405",
+      "start_node_id": "node_junc_19F9",
+      "end_node_id": "node_sensor",
+      "length_mm": 225.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-9999",
+      "start_node_id": "node_x3",
+      "end_node_id": "node_junc_19F9",
+      "length_mm": 180.0,
+      "coverings": []
+    }
+  ],
   "wires": [
     {
+      "wire_id": "W-01",
+      "signal_name": "CAN_H",
+      "part_number": "WIRE-FLRY-0.5-YEL",
       "color": "Yellow",
       "endpoints": [
         {
-          "cavity_id": "1",
-          "node_id": "node_ecu"
+          "node_id": "node_ecu",
+          "cavity_id": "1"
         },
         {
-          "cavity_id": "A",
-          "node_id": "node_sensor"
+          "node_id": "node_sensor",
+          "cavity_id": "A"
         }
       ],
-      "extra_length_mm": 25.0,
-      "part_number": "WIRE-FLRY-0.5-YEL",
       "routed_bundle_ids": [
         "BUN-4424",
         "BUN-7405"
       ],
-      "signal_name": "CAN_H",
-      "wire_id": "W-01"
+      "extra_length_mm": 25.0
     },
     {
+      "wire_id": "W-02",
+      "signal_name": "GND",
+      "part_number": "WIRE-FLRY-0.5-GEN",
       "color": "Blue",
       "endpoints": [
         {
-          "cavity_id": "1",
-          "node_id": "node_x3"
+          "node_id": "node_x3",
+          "cavity_id": "1"
         },
         {
-          "cavity_id": "2",
-          "node_id": "node_ecu"
+          "node_id": "node_ecu",
+          "cavity_id": "2"
         }
       ],
-      "extra_length_mm": 20.0,
-      "part_number": "WIRE-FLRY-0.5-GEN",
-      "routed_bundle_ids": [],
-      "signal_name": "11",
-      "wire_id": "W-02"
+      "routed_bundle_ids": [
+        "BUN-9999",
+        "BUN-4424"
+      ],
+      "extra_length_mm": 20.0
     }
   ]
 }
