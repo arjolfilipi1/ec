@@ -84,14 +84,14 @@ class HarnessProjectModel:
                 node[key]["y"] = y
                 break
 
-    def add_bundle(self, bundle_id: str, start_node_id: str, end_node_id: str, length_mm: float, coverings: Optional[List[dict]] = None):
-        """Adds a physical routing segment with protective covering spans."""
+    def add_bundle(self, bundle_id: str, start_node_id: str, end_node_id: str, length_mm: float = 0.0, coverings: Optional[list] = None):
+        """Adds a physical bundle segment with support for assigned protective coverings."""
         bundle = {
             "bundle_id": bundle_id,
             "start_node_id": start_node_id,
             "end_node_id": end_node_id,
             "length_mm": length_mm,
-            "coverings": coverings or [] # e.g. [{"covering_part_number": "...", "covering_type": "CORRUGATED_TUBING", "start_offset_mm": 0, "end_offset_mm": 100}]
+            "coverings": coverings or []  # List of dicts: e.g., [{"part_number": "CORR-NW-10", "start_ratio": 0.0, "end_ratio": 1.0}]
         }
         self.data["bundles"].append(bundle)
 

@@ -1,10 +1,58 @@
 from PyQt5.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem, QGraphicsItem,
                                 QGraphicsLineItem,QGraphicsEllipseItem,QGraphicsItemGroup)
-from PyQt5.QtCore import Qt, QPointF, pyqtSignal
-from PyQt5.QtGui import QPen, QBrush, QColor, QFont, QWheelEvent, QPainter
+from PyQt5.QtCore import Qt, QPointF, pyqtSignal,QPoint
+from PyQt5.QtGui import QPen, QBrush, QColor, QFont, QWheelEvent, QPainter,QPixmap,QTransform
 from models.harness_model import HarnessProjectModel
 import math
 from database import DatabaseManager
+
+class BundlePatternFactory:
+    """Generates seamlessly repeating pixmap patterns for harness bundle coverings."""
+    
+    @staticmethod
+    def create_corrugated_pattern(color_hex="#2C3E50", rib_color_hex="#7F8C8D") -> QBrush:
+        """Generates a ribbed/corrugated texture pixmap."""
+        pixmap = QPixmap(12, 20)
+        pixmap.fill(QColor(color_hex))
+        
+        painter = QPainter(pixmap)
+        # Draw ribbed highlights/shadows
+        painter.setPen(QPen(QColor(rib_color_hex), 2))
+        painter.drawLine(3, 0, 3, 20)
+        painter.setPen(QPen(QColor("#1A252F"), 2))
+        painter.drawLine(9, 0, 9, 20)
+        painter.end()
+        
+        return QBrush(pixmap)
+
+    @staticmethod
+    def create_pvc_pattern(color_hex="#34495E") -> QBrush:
+        """Generates a smooth PVC sleeving texture."""
+        pixmap = QPixmap(16, 16)
+        pixmap.fill(QColor(color_hex))
+        
+        painter = QPainter(pixmap)
+        # Subtle longitudinal sheen lines
+        painter.setPen(QPen(QColor("#5D6D7E"), 1))
+        painter.drawLine(0, 4, 16, 4)
+        painter.end()
+        
+        return QBrush(pixmap)
+
+    @staticmethod
+    def create_tape_pattern(color_hex="#1C2833") -> QBrush:
+        """Generates a diagonal spiraled tape wrap texture."""
+        pixmap = QPixmap(16, 16)
+        pixmap.fill(QColor(color_hex))
+        
+        painter = QPainter(pixmap)
+        painter.setPen(QPen(QColor("#566573"), 1.5))
+        # Spiral wrap lines
+        painter.drawLine(0, 16, 16, 0)
+        painter.end()
+        
+        return QBrush(pixmap)
+
 class ConnectorTableGraphicsItem(QGraphicsRectItem):
     """Visual table attached to a connector or splice junction node displaying pin/wire mappings and sides."""
     
@@ -206,12 +254,30 @@ class NodeGraphicsItem(QGraphicsRectItem):
         self.label.setDefaultTextColor(QColor(41, 128, 185))
         self.label.setFont(QFont("Segoe UI", 8, QFont.Bold))
         self.label.setPos(-width/2 + 5, -height/2 + 5)
-
+        self._current_angle = 0.0
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemPositionChange and self.scene():
             self.canvas_ref.on_node_moved()
         return super().itemChange(change, value)
-
+    def set_branch_rotation(self, angle: float):
+        """Sets the full rotation for the connector body, while capping the label rotation to +/- 90 degrees."""
+        self._current_angle = angle
+        # 1. Rotate the connector body fully
+        super().setRotation(angle)
+        
+        # 2. Counter-rotate/cap the label so text remains readable (between -90 and +90 degrees)
+        normalized_angle = angle % 360
+        if normalized_angle < 0:
+            normalized_angle += 360
+            
+        label_correction = 0.0
+        if 90 < normalized_angle <= 270:
+            label_correction = 180.0
+        elif 270 < normalized_angle < 360:
+            label_correction = 0.0
+            
+        # Apply counter-rotation to keep text upright
+        self.label.setRotation( label_correction)
 
 class JunctionGraphicsItem(QGraphicsEllipseItem):
     """Custom interactive circle representing a Z-junction / splice node."""
@@ -243,25 +309,62 @@ class JunctionGraphicsItem(QGraphicsEllipseItem):
         if change == QGraphicsItem.ItemPositionChange and self.scene():
             self.canvas_ref.on_node_moved()
         return super().itemChange(change, value)
-
-
+        
 class BundleGraphicsItem(QGraphicsLineItem):
-    """Custom interactive graphics item representing a physical bundle / routing pathway with upright rotated labels."""
-    def __init__(self, bundle_id, start_id, end_id, length_mm, canvas_ref):
+    """Custom interactive graphics item representing a physical harness bundle with rotation-locked covering patterns."""
+    
+    def __init__(self, bundle_id, start_pos, end_pos, bundle_data: dict, canvas_ref):
         super().__init__()
         self.bundle_id = bundle_id
-        self.start_id = start_id
-        self.end_id = end_id
+        self.bundle_data = bundle_data
         self.canvas_ref = canvas_ref
         
         self.setFlag(QGraphicsItem.ItemIsSelectable)
-        self.setPen(QPen(QColor(41, 128, 185), 6, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        self.setLine(start_pos.x(), start_pos.y(), end_pos.x(), end_pos.y())
         
-        # Child text label for bundle ID and length
-        self.label = QGraphicsTextItem(f"{bundle_id} ({length_mm}mm)", self)
+        # Calculate angle to lock pattern orientation to the bundle vector
+        dx = end_pos.x() - start_pos.x()
+        dy = end_pos.y() - start_pos.y()
+        self.angle_deg = math.degrees(math.atan2(dy, dx))
+        
+        self.label = QGraphicsTextItem(f"{bundle_id} ", self)
         self.label.setDefaultTextColor(QColor(44, 62, 80))
         self.label.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        self.update_covering_style()
 
+    def update_covering_style(self):
+        """Applies distinct visual pens and locks brush pattern rotation to the bundle angle."""
+        coverings = self.bundle_data.get("coverings", [])
+        
+        # Default naked bundle style
+        line_width = 8
+        pen = QPen(QColor(127, 140, 141), line_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+        
+        if coverings:
+            primary_cov = coverings[0].get("part_number", "").upper()
+            
+            # Create rotation transform matching the bundle's vector
+            pattern_transform = QTransform().rotate(self.angle_deg)
+            
+            if "CORR" in primary_cov:
+                line_width = 14
+                brush = BundlePatternFactory.create_corrugated_pattern()
+                brush.setTransform(pattern_transform)
+                pen = QPen(brush, line_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+                
+            elif "SLV" in primary_cov or "PVC" in primary_cov:
+                line_width = 11
+                brush = BundlePatternFactory.create_pvc_pattern()
+                brush.setTransform(pattern_transform)
+                pen = QPen(brush, line_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+                
+            elif "TAPE" in primary_cov:
+                line_width = 9
+                brush = BundlePatternFactory.create_tape_pattern()
+                brush.setTransform(pattern_transform)
+                pen = QPen(brush, line_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+
+        self.setPen(pen)
     def update_endpoints(self, p1: QPointF, p2: QPointF):
         """Updates line geometry, matches bundle rotation, and normalizes angle to stay upright."""
         self.setLine(p1.x(), p1.y(), p2.x(), p2.y())
@@ -356,6 +459,13 @@ class HarnessCADCanvas(QGraphicsView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.setBackgroundBrush(QBrush(QColor(240, 242, 245)))
+        # Enable anti-aliasing and smooth rendering
+        self.setRenderHint(QPainter.Antialiasing)
+        self.setRenderHint(QPainter.SmoothPixmapTransform)
+        
+        # Panning state variables
+        self._panning = False
+        self._pan_start_pos = QPoint()
         
         self.current_project = None
         self.node_items = {}
@@ -382,23 +492,48 @@ class HarnessCADCanvas(QGraphicsView):
             
             n_id = node["node_id"]
             is_junction = node.get("is_junction", False) # Clean explicit boolean check
-            
+            node_map = {n["node_id"]: n for n in data.get("nodes", [])}
+            node_angle = 0.0
+            if not is_junction:
+                connected_bundles = [
+                    b for b in data.get("bundles", []) 
+                    if b.get("start_node_id") == n_id or b.get("end_node_id") == n_id
+                ]
+                if connected_bundles:
+                    # Take the first connected bundle to determine branch angle
+                    b = connected_bundles[0]
+                    s_id = b.get("start_node_id")
+                    e_id = b.get("end_node_id")
+                    
+                    if s_id in node_map and e_id in node_map:
+                        sp = node_map[s_id].get("position_2d", {"x": 0, "y": 0})
+                        ep = node_map[e_id].get("position_2d", {"x": 0, "y": 0})
+                        
+                        dx = ep["x"] - sp["x"]
+                        dy = ep["y"] - sp["y"]
+                        
+                        # Calculate angle in degrees
+                        rad = math.atan2(dy, dx)
+                        node_angle = math.degrees(rad)
+                        
+                        # If this node is the end node of the bundle, point outward (add 180 deg)
+                        if e_id == n_id:
+                            node_angle += 180.0
+
             if is_junction:
                 node_item = JunctionGraphicsItem(n_id, x, y, 45, label_str, self)
                 self.scene.addItem(node_item)
             else:
                 node_item = NodeGraphicsItem(n_id, x, y, 90, 60, label_str, self)
+                node_item.set_branch_rotation(node_angle)  # Align connector rotation with branch angle!
                 self.scene.addItem(node_item)
                 
+            # Table items and positioning logic follows...
             table_config = node.get("table_config", {})
             show_table = table_config.get("visible", True)
             
             if is_junction and project_model:
-                wire_count = 0
-                for w in project_model.data.get("wires", []):
-                    for ep in w.get("endpoints", []):
-                        if ep.get("node_id") == n_id:
-                            wire_count += 1
+                wire_count = sum(1 for w in data.get("wires", []) for ep in w.get("endpoints", []) if ep.get("node_id") == n_id)
                 if wire_count == 0:
                     show_table = False
 
@@ -413,15 +548,27 @@ class HarnessCADCanvas(QGraphicsView):
 
         # 2. Create Persistent Bundle Items
         for bundle in data.get("bundles", []):
-            b_item = BundleGraphicsItem(
-                bundle["bundle_id"], 
-                bundle["start_node_id"], 
-                bundle["end_node_id"], 
-                bundle["length_mm"], 
-                self
-            )
-            self.scene.addItem(b_item)
-            self.bundle_items[bundle["bundle_id"]] = b_item
+            
+            b_id = bundle["bundle_id"]
+            s_id = bundle["start_node_id"]
+            e_id = bundle["end_node_id"]
+            
+            if s_id in node_map and e_id in node_map:
+                sp_data = node_map[s_id].get("position_2d", {"x": 0, "y": 0})
+                ep_data = node_map[e_id].get("position_2d", {"x": 0, "y": 0})
+                
+                sp = QPointF(sp_data["x"], sp_data["y"])
+                ep = QPointF(ep_data["x"], ep_data["y"])
+                
+                b_item = BundleGraphicsItem(
+                    b_id,
+                    sp,
+                    ep,
+                    bundle,  # Passes the full bundle dictionary so coverings and styling can be read
+                    self
+                )
+                self.scene.addItem(b_item)
+                self.bundle_items[b_id] = b_item
 
         # 3. Create Persistent Wire Trace Items
         for wire in data.get("wires", []):
@@ -500,6 +647,12 @@ class HarnessCADCanvas(QGraphicsView):
                 self.centerOn(node_item)
 
     def mousePressEvent(self, event):
+        if event.button() == Qt.MiddleButton:
+            self._panning = True
+            self._pan_start_pos = event.pos()
+            self.setCursor(Qt.ClosedHandCursor)
+            event.accept()
+            return
         super().mousePressEvent(event)
         item = self.itemAt(event.pos())
         
@@ -529,8 +682,26 @@ class HarnessCADCanvas(QGraphicsView):
                     if hasattr(sel, 'node_id'):
                         sel.setSelected(False)
             self.active_dragging_nodes = {}
-
+    def mouseMoveEvent(self, event):
+        """Handles dragging motion while the middle mouse button is held down."""
+        if self._panning:
+            delta = event.pos() - self._pan_start_pos
+            self._pan_start_pos = event.pos()
+            
+            # Adjust scrollbar values to pan the view
+            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
+            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
+            
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
     def mouseReleaseEvent(self, event):
+        """Restores cursor and ends panning state when middle mouse button is released."""
+        if event.button() == Qt.MiddleButton and self._panning:
+            self._panning = False
+            self.unsetCursor()
+            event.accept()
+            return
         super().mouseReleaseEvent(event)
         
         if hasattr(self, 'active_dragging_nodes') and self.active_dragging_nodes:

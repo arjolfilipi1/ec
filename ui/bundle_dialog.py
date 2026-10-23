@@ -1,55 +1,56 @@
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
-    QTableWidget, QTableWidgetItem, QDialogButtonBox, QComboBox, QGroupBox, QFormLayout
+    QTableWidget, QTableWidgetItem, QDialogButtonBox, QGroupBox, QFormLayout, QPushButton, QComboBox,QInputDialog
 )
 from PyQt5.QtCore import Qt
+from database import DatabaseManager
 
 class BundlePropertiesDialog(QDialog):
-    """Properties editor dialog for configuring bundle lengths, shielding, and protective coverings."""
+    """Properties and covering manager dialog for harness bundles."""
     
     def __init__(self, bundle_data: dict, parent=None):
         super().__init__(parent)
-        print("props")
-        self.setWindowTitle(f"Bundle Properties - {bundle_data.get('bundle_id')}")
-        self.resize(500, 400)
+        self.setWindowTitle(f"Bundle Properties - {bundle_data.get('bundle_id', 'Bundle')}")
+        self.resize(520, 420)
         
         self.bundle_data = bundle_data
         self._init_ui()
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
-
-        # Form layout for basic attributes
         form_layout = QFormLayout()
-        
+
         self.id_input = QLineEdit(self.bundle_data.get("bundle_id", ""))
         self.id_input.setReadOnly(True)
         form_layout.addRow("Bundle ID:", self.id_input)
 
-        self.length_input = QLineEdit(str(self.bundle_data.get("length_mm", 0.0)))
-        form_layout.addRow("Length Override (mm):", self.length_input)
+        self.len_input = QLineEdit(str(self.bundle_data.get("length_mm", 0.0)))
+        form_layout.addRow("Calculated Length (mm):", self.len_input)
 
         layout.addLayout(form_layout)
 
-        # Protective Coverings Group (Corrugated tubing, braided sleeving, tape)[cite: 1]
-        covering_group = QGroupBox("Outer Protective Coverings")
-        cov_layout = QVBoxLayout(covering_group)
+        # Coverings Assignment Group
+        cov_group = QGroupBox("Applied Protective Coverings (Sleeving / Tubing)")
+        cov_layout = QVBoxLayout(cov_group)
 
-        self.covering_table = QTableWidget()
-        self.covering_table.setColumnCount(4)
-        self.covering_table.setHorizontalHeaderLabels(["Type", "Part Number", "Start Offset (mm)", "End Offset (mm)"])
+        self.cov_table = QTableWidget()
+        self.cov_table.setColumnCount(3)
+        self.cov_table.setHorizontalHeaderLabels(["Part Number", "Description", "Coverage Span"])
         
-        coverings = self.bundle_data.get("coverings", [])
-        self.covering_table.setRowCount(len(coverings))
-        
-        for row, cov in enumerate(coverings):
-            self.covering_table.setItem(row, 0, QTableWidgetItem(cov.get("covering_type", "CORRUGATED_TUBING")))
-            self.covering_table.setItem(row, 1, QTableWidgetItem(cov.get("covering_part_number", "")))
-            self.covering_table.setItem(row, 2, QTableWidgetItem(str(cov.get("start_offset_mm", 0))))
-            self.covering_table.setItem(row, 3, QTableWidgetItem(str(cov.get("end_offset_mm", 0))))
+        self._populate_covering_table()
+        cov_layout.addWidget(self.cov_table)
 
-        cov_layout.addWidget(self.covering_table)
-        layout.addWidget(covering_group)
+        btn_row = QHBoxLayout()
+        self.add_cov_btn = QPushButton("Add Covering...")
+        self.add_cov_btn.clicked.connect(self._add_covering_row)
+        btn_row.addWidget(self.add_cov_btn)
+
+        self.del_cov_btn = QPushButton("Remove Selected")
+        self.del_cov_btn.clicked.connect(self._del_covering_row)
+        btn_row.addWidget(self.del_cov_btn)
+
+        cov_layout.addLayout(btn_row)
+        layout.addWidget(cov_group)
 
         # Dialog Buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self)
@@ -57,29 +58,55 @@ class BundlePropertiesDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
+    def _populate_covering_table(self):
+        coverings = self.bundle_data.get("coverings", [])
+        master_coverings = {c['part_number']: c for c in DatabaseManager.get_coverings()}
+        
+        self.cov_table.setRowCount(len(coverings))
+        for row, cov in enumerate(coverings):
+            p_num = cov.get("part_number", "")
+            master_info = master_coverings.get(p_num, {})
+            desc = master_info.get("description", "Custom Covering")
+            
+            self.cov_table.setItem(row, 0, QTableWidgetItem(p_num))
+            self.cov_table.setItem(row, 1, QTableWidgetItem(desc))
+            self.cov_table.setItem(row, 2, QTableWidgetItem(f"{int(cov.get('start_ratio', 0.0)*100)}% - {int(cov.get('end_ratio', 1.0)*100)}%"))
+
+    def _add_covering_row(self):
+        master_coverings = DatabaseManager.get_coverings()
+        if not master_coverings:
+            return
+            
+        part_nums = [c['part_number'] for c in master_coverings]
+        part_num, ok = QInputDialog.getItem(self, "Select Covering", "Master Part Number:", part_nums, 0, False)
+        
+        if ok and part_num:
+            row = self.cov_table.rowCount()
+            self.cov_table.insertRow(row)
+            self.cov_table.setItem(row, 0, QTableWidgetItem(part_num))
+            self.cov_table.setItem(row, 1, QTableWidgetItem("Sleeving / Tubing"))
+            self.cov_table.setItem(row, 2, QTableWidgetItem("0% - 100%"))
+
+    def _del_covering_row(self):
+        selected_rows = set(item.row() for item in self.cov_table.selectedItems())
+        for row in sorted(selected_rows, reverse=True):
+            self.cov_table.removeRow(row)
+
     def save_data(self):
-        """Saves modifications back into the bundle dictionary structure."""
         try:
-            self.bundle_data["length_mm"] = float(self.length_input.text())
-            print("lenght updated")
+            self.bundle_data["length_mm"] = float(self.len_input.text())
         except ValueError:
-            print("conv failed")
-            self.bundle_data["length_mm"] = 0.0
+            pass
 
         updated_coverings = []
-        for row in range(self.covering_table.rowCount()):
-            cov_type_item = self.covering_table.item(row, 0)
-            part_item = self.covering_table.item(row, 1)
-            start_item = self.covering_table.item(row, 2)
-            end_item = self.covering_table.item(row, 3)
-
-            if part_item and part_item.text().strip():
+        for row in range(self.cov_table.rowCount()):
+            p_item = self.cov_table.item(row, 0)
+            if p_item and p_item.text().strip():
                 updated_coverings.append({
-                    "covering_type": cov_type_item.text() if cov_type_item else "CORRUGATED_TUBING",
-                    "covering_part_number": part_item.text().strip(),
-                    "start_offset_mm": float(start_item.text()) if start_item and start_item.text().isdigit() else 0.0,
-                    "end_offset_mm": float(end_item.text()) if end_item and end_item.text().isdigit() else 0.0
+                    "part_number": p_item.text().strip(),
+                    "start_ratio": 0.0,
+                    "end_ratio": 1.0
                 })
-
+        
         self.bundle_data["coverings"] = updated_coverings
         self.accept()

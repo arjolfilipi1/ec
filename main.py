@@ -578,37 +578,44 @@ class HarnessEditorWindow(QMainWindow):
             self.refresh_views()
             self.statusBar().showMessage(f"Updated properties for bundle {bundle_id} (Undoable).")
     def show_wire_properties(self, wire_data: dict):
-        """Displays the properties dialog for a wire, updates endpoints/attributes, and records on undo stack."""
+        """Displays properties dialog for a wire, recording changes on the undo stack."""
         from ui.wire_dialog import WirePropertiesDialog
         from commands.harness_commands import ModifyHarnessCommand
         
         wire_id = wire_data.get("wire_id")
         
+        # 1. Instantiate command before changes to capture old_state
         command = ModifyHarnessCommand(
             self.current_project, 
-            f"Edit Wire Properties ({wire_id})", 
+            f"Edit Wire ({wire_id})", 
             self.refresh_views
         )
         
-        # Pass project model reference to dialog
-        dialog = WirePropertiesDialog(wire_data, project_model=self.current_project, parent=self)
+        # 2. Open dialog
+        dialog = WirePropertiesDialog(wire_data, self.current_project, self)
         
         if dialog.exec_() == QDialog.Accepted:
+            # 3. Explicitly find and update the wire in the project model by its ID
             for w in self.current_project.data.get("wires", []):
                 if w["wire_id"] == wire_id:
                     w["wire_id"] = wire_data.get("wire_id")
                     w["signal_name"] = wire_data.get("signal_name")
                     w["color"] = wire_data.get("color")
+                    w["stripe_color"] = wire_data.get("stripe_color")  # <--- Added this line!
                     w["gauge"] = wire_data.get("gauge")
                     w["extra_length_mm"] = wire_data.get("extra_length_mm")
-                    w["endpoints"] = wire_data.get("endpoints")
                     break
             
+            # 4. Capture new_state and push to undo stack
             command.set_new_state()
             self.undo_stack.push(command)
-            # DatabaseManager.save_project(self.current_project.data)
+            
+            # 5. Save to SQLite database
+            DatabaseManager.save_project(self.current_project.data)
+            
+            # 6. Refresh Canvas and Tree View
             self.refresh_views()
-            self.statusBar().showMessage(f"Updated properties and endpoints for wire {wire_id} (Undoable).")
+            self.statusBar().showMessage(f"Updated properties for wire {wire_id} (Undoable).")
     def save_local_json_action(self):
         """Saves the current harness project as a portable local JSON file."""
         file_path, _ = QFileDialog.getSaveFileName(

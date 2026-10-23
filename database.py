@@ -36,6 +36,51 @@ def init_db():
     conn.close()
 
 class DatabaseManager:
+    DB_PATH = "harness_editor.db"
+    @staticmethod
+    def init_database():
+        """Initializes SQLite tables including colors and master coverings."""
+        conn = sqlite3.connect(DatabaseManager.DB_PATH)
+        cursor = conn.cursor()
+        # Existing tables...
+        
+        # Master Coverings Table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS master_coverings (
+                part_number TEXT PRIMARY KEY,
+                description TEXT,
+                covering_type TEXT, -- e.g., Corrugated Tube, PVC Sleeving, Braided Mesh, Tape
+                inner_diameter_mm REAL,
+                material TEXT
+            )
+        """)
+        
+        # Seed standard default coverings if empty
+        cursor.execute("SELECT COUNT(*) FROM master_coverings")
+        if cursor.fetchone()[0] == 0:
+            default_coverings = [
+                ("CORR-NW-4.5", "Corrugated Tubing NW 4.5", "Corrugated Tube", 4.5, "PP-MOD"),
+                ("CORR-NW-10", "Corrugated Tubing NW 10", "Corrugated Tube", 10.0, "PP-MOD"),
+                ("CORR-NW-17", "Corrugated Tubing NW 17", "Corrugated Tube", 17.0, "PP-MOD"),
+                ("SLV-PVC-8", "PVC Insulating Sleeving 8mm", "PVC Sleeving", 8.0, "PVC"),
+                ("BRAID-PET-10", "Expandable Braided PET Sleeving 10mm", "Braided Mesh", 10.0, "PET"),
+                ("TAPE-TESA-51608", "Tesa 51608 Fleece Wire Harness Tape", "Tape", 0.0, "PET Fleece")
+            ]
+            cursor.executemany("INSERT OR IGNORE INTO master_coverings VALUES (?, ?, ?, ?, ?)", default_coverings)
+
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def get_coverings() -> list:
+        """Retrieves all master covering parts from the database."""
+        conn = sqlite3.connect(DatabaseManager.DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM master_coverings ORDER BY covering_type, part_number")
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
     @staticmethod
     def save_project(project_data: dict, db_path: str = "harness_project.db"):
         """Saves project JSON state into a local SQLite database."""
