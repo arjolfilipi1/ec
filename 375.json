@@ -453,8 +453,8 @@
       "part_number": "SPLICE-Z-JUNCTION",
       "ref_designator": "LV2",
       "position_2d": {
-        "x": 564.7916250000003,
-        "y": 296.80837500000007
+        "x": 570.7916250000003,
+        "y": 297.80837500000007
       },
       "formboard_position_2d": {
         "x": 627.3125000000002,
@@ -541,8 +541,10 @@
     {
       "wire_id": "GM2311",
       "signal_name": "HZ",
-      "part_number": "WIRE-FLRY-0.5-GEN",
+      "part_number": "WIRE-FLRY-0.75-GEN",
       "color": "OR",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
       "endpoints": [
         {
           "cavity_id": "7",
@@ -559,14 +561,15 @@
         "BUN-AFEE",
         "BUN-F5AD"
       ],
-      "extra_length_mm": 20.0,
-      "gauge": null
+      "extra_length_mm": 20.0
     },
     {
       "wire_id": "GM2317",
       "signal_name": "GWS 1",
-      "part_number": "WIRE-FLRY-0.5-GEN",
+      "part_number": "WIRE-FLRY-0.75-GEN",
       "color": "YE",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
       "endpoints": [
         {
           "cavity_id": "5",
@@ -584,14 +587,15 @@
         "BUN-8A24",
         "BUN-2070"
       ],
-      "extra_length_mm": 20.0,
-      "gauge": null
+      "extra_length_mm": 20.0
     },
     {
       "wire_id": "GM2318",
       "signal_name": "SBE 2",
-      "part_number": "WIRE-FLRY-0.5-GEN",
+      "part_number": "WIRE-FLRY-0.75-GEN",
       "color": "GN",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
       "endpoints": [
         {
           "cavity_id": "7",
@@ -609,14 +613,15 @@
         "BUN-AFEE",
         "BUN-AC7A"
       ],
-      "extra_length_mm": 20.0,
-      "gauge": null
+      "extra_length_mm": 20.0
     },
     {
-      "wire_id": "GM2319\n",
+      "wire_id": "GM2319",
       "signal_name": "SBE 1",
-      "part_number": "WIRE-FLRY-0.5-GEN",
+      "part_number": "WIRE-FLRY-0.75-GEN",
       "color": "BL",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
       "endpoints": [
         {
           "node_id": "node_stvbt 01",
@@ -637,10 +642,12 @@
       "extra_length_mm": 20.0
     },
     {
-      "wire_id": "GM2322\n",
+      "wire_id": "GM2322",
       "signal_name": "Heat 2",
-      "part_number": "WIRE-FLRY-0.5-GEN",
+      "part_number": "WIRE-FLRY-0.75-GEN",
       "color": "SW/WS",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
       "endpoints": [
         {
           "node_id": "node_stvbt 06",
@@ -660,10 +667,12 @@
       "extra_length_mm": 20.0
     },
     {
-      "wire_id": "GM2315\n",
+      "wire_id": "GM2315",
       "signal_name": "24V",
-      "part_number": "WIRE-FLRY-0.5-GEN",
+      "part_number": "WIRE-FLRY-0.75-GEN",
       "color": "RD",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
       "endpoints": [
         {
           "node_id": "node_stvbt 01",
@@ -680,10 +689,12 @@
       "extra_length_mm": 20.0
     },
     {
-      "wire_id": "GM2316\n",
+      "wire_id": "GM2316",
       "signal_name": "24V",
-      "part_number": "WIRE-FLRY-0.5-GEN",
+      "part_number": "WIRE-FLRY-0.75-GEN",
       "color": "RD",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
       "endpoints": [
         {
           "node_id": "node_stvbt 06",
@@ -703,10 +714,12 @@
       "extra_length_mm": 20.0
     },
     {
-      "wire_id": "GM2320\n",
+      "wire_id": "GM2320",
       "signal_name": "24V",
-      "part_number": "WIRE-FLRY-0.5-GEN",
+      "part_number": "WIRE-FLRY-0.75-GEN",
       "color": "RD",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
       "endpoints": [
         {
           "node_id": "node_stvbt 03",
@@ -726,10 +739,12 @@
       "extra_length_mm": 20.0
     },
     {
-      "wire_id": "GM2321\n",
+      "wire_id": "GM2321",
       "signal_name": "24V",
-      "part_number": "WIRE-FLRY-0.5-GEN",
+      "part_number": "WIRE-FLRY-0.75-GEN",
       "color": "RD",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
       "endpoints": [
         {
           "node_id": "node_stvbt 06",
@@ -751,8 +766,10 @@
     {
       "wire_id": "GM2312",
       "signal_name": "GND",
-      "part_number": "WIRE-FLRY-0.5-GEN",
+      "part_number": "WIRE-FLRY-0.75-GEN",
       "color": "BN",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
       "endpoints": [
         {
           "cavity_id": "2",
@@ -768,8 +785,56 @@
         "BUN-8A24",
         "BUN-1FCB"
       ],
-      "extra_length_mm": 20.0,
-      "gauge": null
+      "extra_length_mm": 20.0
+    },
+    {
+      "wire_id": "GM2313",
+      "signal_name": "GND",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
+      "color": "BN",
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.75-BN",
+      "extra_length_mm": 0.0,
+      "endpoints": [
+        {
+          "node_id": "node_z_388E",
+          "cavity_id": "x"
+        },
+        {
+          "node_id": "node_stvbt 03",
+          "cavity_id": "1"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-1FCB",
+        "BUN-AFEE",
+        "BUN-F5AD"
+      ]
+    },
+    {
+      "wire_id": "GM2314",
+      "signal_name": "GND",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
+      "color": "BK",
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.75-BK",
+      "extra_length_mm": 0.0,
+      "endpoints": [
+        {
+          "node_id": "node_z_388E",
+          "cavity_id": "x"
+        },
+        {
+          "node_id": "node_stvbt 01",
+          "cavity_id": "4"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-6334",
+        "BUN-F4EB"
+      ]
     }
   ],
   "cables": []

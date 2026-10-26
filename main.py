@@ -2,7 +2,8 @@ import sys
 import os,uuid
 
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QAction, QMenuBar, QSplitter, QInputDialog, QUndoStack,QLineEdit,QDialog,QFileDialog,QMessageBox
+    QApplication, QMainWindow, QAction, QMenuBar, QSplitter, QInputDialog, QUndoStack,QLineEdit,QDialog
+    ,QFileDialog,QMessageBox
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QKeySequence
@@ -245,6 +246,12 @@ class HarnessEditorWindow(QMainWindow):
 
         formboard_action = QAction("Generate 1:1 Formboard", self)
         tools_menu.addAction(formboard_action)
+        # Analysis Menu
+        analysis_menu = menubar.addMenu("&Tools")
+        routing_action = analysis_menu.addAction("Bundle Diameter Manager...")
+        routing_action.triggered.connect(self.open_branch_analysis)
+        analysis_menu.addAction(drc_action)
+
     def _init_toolbar(self):
         """Optional: Adds quick-access buttons to a main window toolbar."""
         toolbar = self.addToolBar("Main Toolbar")
@@ -293,137 +300,28 @@ class HarnessEditorWindow(QMainWindow):
         self.undo_stack.push(command)
         self.statusBar().showMessage(f"Broke bundle {bundle_id} and inserted junction {junction_ref} (Undoable).")
     def prompt_add_wire(self):
-        """Interactively prompt user to select start/end nodes, automatically snap/bridge 
-        disconnected endpoints to the harness trunk, and wrap the transaction in an undoable command."""
-        nodes = self.current_project.data.get("nodes", [])
-        if len(nodes) < 2:
-            self.statusBar().showMessage("At least two connector nodes are required to route a wire.")
-            return
-
-        node_labels = [f"{n['ref_designator']} ({n['node_id']})" for n in nodes]
-        
-        # 1. Select Start & End Nodes
-        start_choice, ok1 = QInputDialog.getItem(self, "Add Wire - Start Node", "Select Start Connector:", node_labels, 0, False)
-        if not ok1:
-            return
-        start_node = nodes[node_labels.index(start_choice)]
-
-        start_cavities = [p['cavity_id'] for p in start_node.get("pins", [{"cavity_id": "1"}])]
-        start_cavity, ok_sc = QInputDialog.getItem(self, "Add Wire - Start Cavity", f"Select Cavity on {start_node['ref_designator']}:", start_cavities, 0, False)
-        if not ok_sc:
-            return
-
-        end_choice, ok2 = QInputDialog.getItem(self, "Add Wire - End Node", "Select End Connector:", node_labels, 1 if len(node_labels) > 1 else 0, False)
-        if not ok2:
-            return
-        end_node = nodes[node_labels.index(end_choice)]
-
-        end_cavities = [p['cavity_id'] for p in end_node.get("pins", [{"cavity_id": "1"}])]
-        end_cavity, ok_ec = QInputDialog.getItem(self, "Add Wire - End Cavity", f"Select Cavity on {end_node['ref_designator']}:", end_cavities, 0, False)
-        if not ok_ec:
-            return
-
-        # 2. Enter Wire Metadata first
-        wire_id, ok3 = QInputDialog.getText(self, "Add Wire", "Enter Wire ID (e.g., W-02):")
-        if not ok3 or not wire_id:
-            return
-            
-        signal_name, ok4 = QInputDialog.getText(self, "Add Wire", "Enter Signal Name (e.g., LIN_BUS):")
-        if not ok4 or not signal_name:
-            return
-            
-        color, ok5 = QInputDialog.getText(self, "Add Wire", "Enter Wire Color (e.g., Blue/White):")
-        if not ok5 or not color:
-            return
-
-        # Initialize Undoable Snapshot Command
+        """Opens the unified single-window AddWireDialog."""
+        from ui.wire_dialog import AddWireDialog
         from commands.harness_commands import ModifyHarnessCommand
-        command = ModifyHarnessCommand(self.current_project, f"Add Wire {wire_id} (with Auto-Routing)", self.refresh_views)
-
-        # Helper function to ensure a given node is connected to the network
-        def ensure_node_connected(target_node):
-            # Count bundles connected to this node
-            attached_bundles = [b for b in self.current_project.data.get("bundles", []) 
-                                if b["start_node_id"] == target_node["node_id"] or b["end_node_id"] == target_node["node_id"]]
-            if attached_bundles:
-                return  # Already connected
-
-            # If no bundles exist in the entire project, we can't trunk-snap; connect it to the other node
-            all_bundles = self.current_project.data.get("bundles", [])
-            if not all_bundles:
-                other_node = end_node if target_node["node_id"] == start_node["node_id"] else start_node
-                import uuid, math
-                b_id = f"BUN-{uuid.uuid4().hex[:4].upper()}"
-                p1 = target_node.get("position_2d", {"x": 0, "y": 0})
-                p2 = other_node.get("position_2d", {"x": 0, "y": 0})
-                length = math.sqrt((p2["x"] - p1["x"])**2 + (p2["y"] - p1["y"])**2)
-                self.current_project.data["bundles"].append({
-                    "bundle_id": b_id,
-                    "start_node_id": target_node["node_id"],
-                    "end_node_id": other_node["node_id"],
-                    "length_mm": round(length, 1),
-                    "coverings": []
-                })
-                return
-
-            # Otherwise, find nearest bundle trunk segment to snap to
-            nearest_trunk = self.current_project.find_nearest_bundle_segment(target_node["node_id"])
-            if nearest_trunk:
-                trunk_bundle = nearest_trunk["bundle"]
-                proj = nearest_trunk["projection"]
-                
-                # Generate Z designation (Z1, Z2...)
-                z_count = sum(1 for n in self.current_project.data.get("nodes", []) if "ref_designator" in n and n["ref_designator"].startswith("Z"))
-                z_ref = f"Z{z_count + 1}"
-                
-                # Break trunk to insert Z junction
-                z_node_id = self.current_project.break_bundle(trunk_bundle["bundle_id"], z_ref, proj["x"], proj["y"])
-                
-                # Create breakout branch bundle from Z junction to target node
-                import uuid, math
-                branch_id = f"BUN-{uuid.uuid4().hex[:4].upper()}"
-                p1 = proj
-                p2 = target_node.get("position_2d", {"x": 0, "y": 0})
-                length = math.sqrt((p2["x"] - p1["x"])**2 + (p2["y"] - p1["y"])**2)
-                
-                self.current_project.data["bundles"].append({
-                    "bundle_id": branch_id,
-                    "start_node_id": z_node_id,
-                    "end_node_id": target_node["node_id"],
-                    "length_mm": round(length, 1),
-                    "coverings": []
-                })
-
-        # 3. Ensure both start and end nodes are integrated into the network
-        ensure_node_connected(start_node)
-        ensure_node_connected(end_node)
-
-        # 4. Now find the complete continuous bundle path between start and end nodes
-        routed_bundles = self.current_project.find_bundle_path(start_node["node_id"], end_node["node_id"])
-        if not routed_bundles:
-            from PyQt5.QtWidgets import QMessageBox
-            QMessageBox.warning(self, "Routing Error", f"Could not establish a continuous bundle path between {start_node['ref_designator']} and {end_node['ref_designator']}.")
-            return
-
-        # 5. Add the wire object
-        wire_data = {
-            "wire_id": wire_id,
-            "signal_name": signal_name,
-            "part_number": "WIRE-FLRY-0.5-GEN",
-            "color": color,
-            "endpoints": [
-                {"node_id": start_node["node_id"], "cavity_id": start_cavity},
-                {"node_id": end_node["node_id"], "cavity_id": end_cavity}
-            ],
-            "routed_bundle_ids": routed_bundles,
-            "extra_length_mm": 20.0
-        }
-        self.current_project.add_wire_object(wire_data)
-
-        # Finalize snapshot and push to undo stack
-        command.set_new_state()
-        self.undo_stack.push(command)
-        self.statusBar().showMessage(f"Added wire {wire_id} successfully with automated path resolution (Undoable).")
+        
+        dialog = AddWireDialog(self.current_project, self)
+        if dialog.exec_() == QDialog.Accepted:
+            new_wire = dialog.wire_data
+            
+            # Record undoable command
+            command = ModifyHarnessCommand(
+                self.current_project, 
+                f"Add Wire ({new_wire['wire_id']})", 
+                self.refresh_views
+            )
+            
+            self.current_project.data.setdefault("wires", []).append(new_wire)
+            
+            command.set_new_state()
+            self.undo_stack.push(command)
+            DatabaseManager.save_project(self.current_project.data)
+            self.refresh_views()
+            self.statusBar().showMessage(f"Added wire {new_wire['wire_id']}.")
 
     def prompt_remove_wire(self):
         """Prompt user to select and remove an existing wire."""
@@ -595,14 +493,14 @@ class HarnessEditorWindow(QMainWindow):
         dialog = WirePropertiesDialog(wire_data, self.current_project, self)
         
         if dialog.exec_() == QDialog.Accepted:
-            # 3. Explicitly find and update the wire in the project model by its ID
             for w in self.current_project.data.get("wires", []):
                 if w["wire_id"] == wire_id:
                     w["wire_id"] = wire_data.get("wire_id")
                     w["signal_name"] = wire_data.get("signal_name")
                     w["color"] = wire_data.get("color")
-                    w["stripe_color"] = wire_data.get("stripe_color")  # <--- Added this line!
+                    w["stripe_color"] = wire_data.get("stripe_color")
                     w["gauge"] = wire_data.get("gauge")
+                    w["outer_diameter_mm"] = wire_data.get("outer_diameter_mm")  # <--- Added this line
                     w["extra_length_mm"] = wire_data.get("extra_length_mm")
                     break
             
@@ -840,7 +738,13 @@ class HarnessEditorWindow(QMainWindow):
             # 6. Refresh Canvas and Tree View
             self.refresh_views()
             self.statusBar().showMessage(f"Updated properties for node {node_id} (Undoable).")
+    def open_branch_analysis(self):
+        """Opens the Branch & Covering Analysis Report window."""
+        from ui.branch_analysis_dialog import BranchAnalysisDialog
+        dialog = BranchAnalysisDialog(self.current_project, self)
+        dialog.exec_()
 if __name__ == "__main__":
+    DatabaseManager.init_database()
     init_db()
     app = QApplication(sys.argv)
     window = HarnessEditorWindow()

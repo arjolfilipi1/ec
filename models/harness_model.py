@@ -111,7 +111,20 @@ class HarnessProjectModel:
             "conductors": conductors # List of inner wires/cores
         }
         self.data.setdefault("cables", []).append(cable)
-
+    def add_wire(self, wire_id: str, signal_name: str, gauge: float, color: str, stripe_color: str = "", endpoints: Optional[list] = None, outer_diameter_mm: float = 1.6):
+        """Adds an electrical wire with gauge, diameter, color properties, and endpoints."""
+        wire = {
+            "wire_id": wire_id,
+            "signal_name": signal_name,
+            "gauge": gauge,
+            "color": color,
+            "stripe_color": stripe_color,
+            "outer_diameter_mm": outer_diameter_mm,
+            "wire_part_number": f"WIRE-{gauge}-{color}",
+            "endpoints": endpoints or [],
+            "extra_length_mm": 0.0
+        }
+        self.data["wires"].append(wire)
     def add_wire_object(self, wire_data: dict):
         """Adds a single-core electrical conductor."""
         self.data["wires"].append(wire_data)

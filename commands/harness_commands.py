@@ -85,6 +85,7 @@ class AddWireCommand(QUndoCommand):
         self.update_callback()
 
     def redo(self):
+        print(self.wire_data)
         self.project_model.add_wire_object(self.wire_data)
         self.update_callback()
 

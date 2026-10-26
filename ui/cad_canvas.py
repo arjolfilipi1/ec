@@ -1,57 +1,11 @@
 from PyQt5.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem, QGraphicsItem,
-                                QGraphicsLineItem,QGraphicsEllipseItem,QGraphicsItemGroup)
+                                QGraphicsLineItem,QGraphicsEllipseItem,QGraphicsItemGroup,QStyle,QLineEdit)
 from PyQt5.QtCore import Qt, QPointF, pyqtSignal,QPoint
 from PyQt5.QtGui import QPen, QBrush, QColor, QFont, QWheelEvent, QPainter,QPixmap,QTransform
 from models.harness_model import HarnessProjectModel
 import math
 from database import DatabaseManager
 
-class BundlePatternFactory:
-    """Generates seamlessly repeating pixmap patterns for harness bundle coverings."""
-    
-    @staticmethod
-    def create_corrugated_pattern(color_hex="#2C3E50", rib_color_hex="#7F8C8D") -> QBrush:
-        """Generates a ribbed/corrugated texture pixmap."""
-        pixmap = QPixmap(12, 20)
-        pixmap.fill(QColor(color_hex))
-        
-        painter = QPainter(pixmap)
-        # Draw ribbed highlights/shadows
-        painter.setPen(QPen(QColor(rib_color_hex), 2))
-        painter.drawLine(3, 0, 3, 20)
-        painter.setPen(QPen(QColor("#1A252F"), 2))
-        painter.drawLine(9, 0, 9, 20)
-        painter.end()
-        
-        return QBrush(pixmap)
-
-    @staticmethod
-    def create_pvc_pattern(color_hex="#34495E") -> QBrush:
-        """Generates a smooth PVC sleeving texture."""
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(QColor(color_hex))
-        
-        painter = QPainter(pixmap)
-        # Subtle longitudinal sheen lines
-        painter.setPen(QPen(QColor("#5D6D7E"), 1))
-        painter.drawLine(0, 4, 16, 4)
-        painter.end()
-        
-        return QBrush(pixmap)
-
-    @staticmethod
-    def create_tape_pattern(color_hex="#1C2833") -> QBrush:
-        """Generates a diagonal spiraled tape wrap texture."""
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(QColor(color_hex))
-        
-        painter = QPainter(pixmap)
-        painter.setPen(QPen(QColor("#566573"), 1.5))
-        # Spiral wrap lines
-        painter.drawLine(0, 16, 16, 0)
-        painter.end()
-        
-        return QBrush(pixmap)
 
 class ConnectorTableGraphicsItem(QGraphicsRectItem):
     """Visual table attached to a connector or splice junction node displaying pin/wire mappings and sides."""
@@ -81,7 +35,6 @@ class ConnectorTableGraphicsItem(QGraphicsRectItem):
         
         # Explicit boolean check instead of string matching
         is_junction = self.node_data.get("is_junction", False)
-        print(node_id,is_junction)
         # Define columns based on node type
         columns = config.get("columns", [])
         if not columns:
@@ -101,7 +54,6 @@ class ConnectorTableGraphicsItem(QGraphicsRectItem):
                     {"id": "wire_id", "label": "Wire", "width": 60},
                     {"id": "color", "label": "Color", "width": 45}
                 ]
-        print(columns)
         row_data_list = []
         if is_junction:
             row_data_list = []
@@ -311,39 +263,44 @@ class JunctionGraphicsItem(QGraphicsEllipseItem):
         return super().itemChange(change, value)
         
 class BundleGraphicsItem(QGraphicsLineItem):
-    """Custom interactive graphics item representing a physical harness bundle with rotation-locked covering patterns."""
+    """Custom interactive bundle with branch length label, inline editing, and pen-based selection highlight."""
     
     def __init__(self, bundle_id, start_pos, end_pos, bundle_data: dict, canvas_ref):
         super().__init__()
         self.bundle_id = bundle_id
         self.bundle_data = bundle_data
         self.canvas_ref = canvas_ref
+        self.editor = None
         
         self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.setLine(start_pos.x(), start_pos.y(), end_pos.x(), end_pos.y())
         
-        # Calculate angle to lock pattern orientation to the bundle vector
+        # Calculate angle for pattern transformation
         dx = end_pos.x() - start_pos.x()
         dy = end_pos.y() - start_pos.y()
         self.angle_deg = math.degrees(math.atan2(dy, dx))
         
-        self.label = QGraphicsTextItem(f"{bundle_id} ", self)
-        self.label.setDefaultTextColor(QColor(44, 62, 80))
-        self.label.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        # Create branch length label (shows length only)
+        length = self.bundle_data.get("length_mm", 0.0)
+        self.label_item = QGraphicsTextItem(f"{length:.1f} mm", self)
+        self.label_item.setFont(QFont("Segoe UI", 8, QFont.Bold))
+        self.label_item.setDefaultTextColor(QColor(44, 62, 80))
+        
+        # Position label at midpoint of the line
+        self._update_label_position()
         self.update_covering_style()
 
+
+
     def update_covering_style(self):
-        """Applies distinct visual pens and locks brush pattern rotation to the bundle angle."""
+        """Applies normal covering styles and saves base pen."""
         coverings = self.bundle_data.get("coverings", [])
-        
-        # Default naked bundle style
         line_width = 8
-        pen = QPen(QColor(127, 140, 141), line_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+        base_color = QColor(127, 140, 141)
+        pen = QPen(base_color, line_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
         
         if coverings:
             primary_cov = coverings[0].get("part_number", "").upper()
-            
-            # Create rotation transform matching the bundle's vector
             pattern_transform = QTransform().rotate(self.angle_deg)
             
             if "CORR" in primary_cov:
@@ -351,20 +308,99 @@ class BundleGraphicsItem(QGraphicsLineItem):
                 brush = BundlePatternFactory.create_corrugated_pattern()
                 brush.setTransform(pattern_transform)
                 pen = QPen(brush, line_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-                
             elif "SLV" in primary_cov or "PVC" in primary_cov:
                 line_width = 11
                 brush = BundlePatternFactory.create_pvc_pattern()
                 brush.setTransform(pattern_transform)
                 pen = QPen(brush, line_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
-                
             elif "TAPE" in primary_cov:
                 line_width = 9
                 brush = BundlePatternFactory.create_tape_pattern()
                 brush.setTransform(pattern_transform)
                 pen = QPen(brush, line_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
 
+        self.base_pen = pen
         self.setPen(pen)
+
+    def paint(self, painter, option, widget=None):
+        """Suppresses the default dotted selection box and highlights via branch pen."""
+        # Remove State_Selected so Qt doesn't draw the dotted bounding rectangle
+        option.state &= ~QStyle.State_Selected
+        
+        if self.isSelected():
+            # Highlight branch with a glowing accent pen when selected
+            highlight_pen = QPen(QColor(41, 128, 185), self.base_pen.width() + 4, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+            painter.setPen(highlight_pen)
+            painter.drawLine(self.line())
+            
+        super().paint(painter, option, widget)
+
+    def mouseDoubleClickEvent(self, event):
+        """Opens an inline QLineEdit text input right over the canvas to edit branch length."""
+        if self.canvas_ref and hasattr(self.canvas_ref, "mapFromScene"):
+            # Map the mouse scene position directly to view coordinates
+            view_pos = self.canvas_ref.mapFromScene(event.scenePos())
+            self._open_inline_editor(self.canvas_ref, view_pos)
+        super().mouseDoubleClickEvent(event)
+
+    def _update_label_position(self):
+        """Positions the label at the midpoint, offset perpendicularly so it sits cleanly above the bundle."""
+        p1 = self.line().p1()
+        p2 = self.line().p2()
+        mid_x = (p1.x() + p2.x()) / 2
+        mid_y = (p1.y() + p2.y()) / 2
+        
+        dx = p2.x() - p1.x()
+        dy = p2.y() - p1.y()
+        length = math.hypot(dx, dy)
+        
+        width = self.label_item.document().idealWidth()
+        height = self.label_item.document().size().height()
+        
+        if length > 1e-5:
+            # Calculate perpendicular normal vector (nx, ny)
+            nx = -dy / length
+            ny = dx / length
+            
+            # Offset distance in pixels above the bundle line
+            offset = -16.0
+            pos_x = mid_x + (nx * offset) - (width / 2)
+            pos_y = mid_y + (ny * offset) - (height / 2)
+        else:
+            pos_x = mid_x - (width / 2)
+            pos_y = mid_y - (height / 2)
+            
+        self.label_item.setPos(pos_x, pos_y)
+
+    def _open_inline_editor(self, parent_widget, view_pos):
+        if self.editor is not None:
+            self.editor.deleteLater()
+            
+        self.editor = QLineEdit(parent_widget)
+        current_len = self.bundle_data.get("length_mm", 0.0)
+        self.editor.setText(str(current_len))
+        self.editor.setGeometry(int(view_pos.x() - 45), int(view_pos.y() - 15), 90, 26)
+        self.editor.setStyleSheet("background: white; border: 2px solid #3498db; border-radius: 4px; font-weight: bold;")
+        self.editor.show()
+        self.editor.setFocus()
+        self.editor.selectAll()
+        
+        def commit_length():
+            try:
+                new_val = float(self.editor.text().strip())
+                self.bundle_data["length_mm"] = new_val
+                self.label_item.setPlainText(f"{new_val:.1f} mm")
+                
+                # Re-center cleanly using synchronous ideal width
+                self._update_label_position()
+                
+            except ValueError:
+                pass
+            if self.editor:
+                self.editor.deleteLater()
+                self.editor = None
+                
+        self.editor.editingFinished.connect(commit_length)
     def update_endpoints(self, p1: QPointF, p2: QPointF):
         """Updates line geometry, matches bundle rotation, and normalizes angle to stay upright."""
         self.setLine(p1.x(), p1.y(), p2.x(), p2.y())
@@ -386,7 +422,7 @@ class BundleGraphicsItem(QGraphicsLineItem):
             elif angle_deg < -90:
                 angle_deg += 180
                 
-            self.label.setRotation(angle_deg)
+            self.label_item.setRotation(angle_deg)
             
             # Compute perpendicular normal vector for clean offset x (e.g., 14 pixels above the line)
             nx = -dy / length
@@ -394,9 +430,9 @@ class BundleGraphicsItem(QGraphicsLineItem):
             offset_dist = 14.0
             
             # Center transformation origin for proper rotation
-            self.label.setTransformOriginPoint(self.label.boundingRect().center())
-            self.label.setPos(mid_x + nx * offset_dist - self.label.boundingRect().width() / 2, 
-                              mid_y + ny * offset_dist - self.label.boundingRect().height() / 2)
+            self.label_item.setTransformOriginPoint(self.label_item.boundingRect().center())
+            self.label_item.setPos(mid_x + nx * offset_dist - self.label_item.boundingRect().width() / 2, 
+                              mid_y + ny * offset_dist - self.label_item.boundingRect().height() / 2)
 
 
 class WireGraphicsItem(QGraphicsItemGroup):

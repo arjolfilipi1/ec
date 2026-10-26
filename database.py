@@ -39,38 +39,70 @@ class DatabaseManager:
     DB_PATH = "harness_editor.db"
     @staticmethod
     def init_database():
-        """Initializes SQLite tables including colors and master coverings."""
+        """Initializes SQLite tables including colors, master coverings, and master wires."""
         conn = sqlite3.connect(DatabaseManager.DB_PATH)
         cursor = conn.cursor()
+        
         # Existing tables...
         
-        # Master Coverings Table
+        # Master Wires Table (Company-wide wire component library)
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS master_coverings (
+            CREATE TABLE IF NOT EXISTS master_wires (
                 part_number TEXT PRIMARY KEY,
+                gauge_mm2 REAL,
+                outer_diameter_mm REAL,
                 description TEXT,
-                covering_type TEXT, -- e.g., Corrugated Tube, PVC Sleeving, Braided Mesh, Tape
-                inner_diameter_mm REAL,
-                material TEXT
+                default_color TEXT
             )
         """)
         
-        # Seed standard default coverings if empty
-        cursor.execute("SELECT COUNT(*) FROM master_coverings")
+        # Seed standard automotive metric wires (FLRY-B) if empty
+        cursor.execute("SELECT COUNT(*) FROM master_wires")
         if cursor.fetchone()[0] == 0:
-            default_coverings = [
-                ("CORR-NW-4.5", "Corrugated Tubing NW 4.5", "Corrugated Tube", 4.5, "PP-MOD"),
-                ("CORR-NW-10", "Corrugated Tubing NW 10", "Corrugated Tube", 10.0, "PP-MOD"),
-                ("CORR-NW-17", "Corrugated Tubing NW 17", "Corrugated Tube", 17.0, "PP-MOD"),
-                ("SLV-PVC-8", "PVC Insulating Sleeving 8mm", "PVC Sleeving", 8.0, "PVC"),
-                ("BRAID-PET-10", "Expandable Braided PET Sleeving 10mm", "Braided Mesh", 10.0, "PET"),
-                ("TAPE-TESA-51608", "Tesa 51608 Fleece Wire Harness Tape", "Tape", 0.0, "PET Fleece")
+            default_wires = [
+                ("FLRY-B-0.35", 0.35, 1.2, "Automotive Wire FLRY-B 0.35 mm²", "BK"),
+                ("FLRY-B-0.5", 0.50, 1.6, "Automotive Wire FLRY-B 0.50 mm²", "BK"),
+                ("FLRY-B-0.75", 0.75, 1.9, "Automotive Wire FLRY-B 0.75 mm²", "BK"),
+                ("FLRY-B-1.0", 1.00, 2.1, "Automotive Wire FLRY-B 1.00 mm²", "BK"),
+                ("FLRY-B-1.5", 1.50, 2.4, "Automotive Wire FLRY-B 1.50 mm²", "BK"),
+                ("FLRY-B-2.5", 2.50, 3.0, "Automotive Wire FLRY-B 2.50 mm²", "BK")
             ]
-            cursor.executemany("INSERT OR IGNORE INTO master_coverings VALUES (?, ?, ?, ?, ?)", default_coverings)
+            cursor.executemany("INSERT OR IGNORE INTO master_wires VALUES (?, ?, ?, ?, ?)", default_wires)
 
         conn.commit()
         conn.close()
+    @staticmethod
+    def get_master_wires() -> list:
+        """Retrieves all master wire components from the database."""
+        conn = sqlite3.connect(DatabaseManager.DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM master_wires ORDER BY gauge_mm2")
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
 
+    @staticmethod
+    def publish_project_to_master(project_data: dict):
+        """Registers project wires and components into the company master database upon final publication."""
+        conn = sqlite3.connect(DatabaseManager.DB_PATH)
+        cursor = conn.cursor()
+        
+        # Register Wires
+        for w in project_data.get("wires", []):
+            gauge = w.get("gauge", 0.5)
+            od = w.get("outer_diameter_mm", 1.6) # Fallback outer diameter estimation
+            color = w.get("color", "BK")
+            p_num = w.get("wire_part_number") or f"WIRE-{gauge}-{color}"
+            desc = f"Wire {w.get('signal_name', w.get('wire_id'))} ({gauge}mm²)"
+            
+            cursor.execute("""
+                INSERT OR REPLACE INTO master_wires (part_number, gauge_mm2, outer_diameter_mm, description, default_color)
+                VALUES (?, ?, ?, ?, ?)
+            """, (p_num, gauge, od, desc, color))
+            
+        conn.commit()
+        conn.close()
     @staticmethod
     def get_coverings() -> list:
         """Retrieves all master covering parts from the database."""
