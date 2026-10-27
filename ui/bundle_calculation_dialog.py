@@ -68,7 +68,21 @@ class BundleCalculationDialog(QDialog):
         buttons.accepted.connect(self.save_data)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
-
+    def save_data(self):
+        text = self.override_input.text().strip()
+        if not text:
+            self.bundle_data.pop("override_diameter_mm", None)
+        else:
+            try:
+                self.bundle_data["override_diameter_mm"] = float(text)
+            except ValueError:
+                pass
+                
+        # Ensure project state is saved on exit
+        if self.project_model and hasattr(self.project_model, "data"):
+            DatabaseManager.save_project(self.project_model.data)
+            
+        self.accept()
     def _populate_wire_table(self):
         wires = HarnessCalculator.get_wires_in_bundle(self.bundle_data, self.project_model.data)
         
@@ -97,7 +111,7 @@ class BundleCalculationDialog(QDialog):
         self.status_label.setText(status_msg)
 
     def _on_wire_double_clicked(self, item):
-        """Opens the standard WirePropertiesDialog when a wire row is double-clicked."""
+        """Opens the standard WirePropertiesDialog and explicitly syncs updates back to the project model."""
         row = item.row()
         id_item = self.wire_table.item(row, 0)
         if not id_item:
@@ -107,9 +121,21 @@ class BundleCalculationDialog(QDialog):
         if not wire_ref:
             return
 
-        # Open the exact same WirePropertiesDialog used elsewhere in the application
-        dialog = WirePropertiesDialog(wire_ref, self.project_model, self)
+        # Open the standard WirePropertiesDialog
+        dialog = WirePropertiesDialog(wire_ref, self.project_model,self.undo_stack,self.parent_window.main_window.wires_tab.refresh_wires, self)
         if dialog.exec_() == QDialog.Accepted:
+            # Explicitly retrieve updated wire data from dialog and sync to master project model
+            updated_wire = getattr(dialog, "wire_data", None)
+            if updated_wire and self.project_model and hasattr(self.project_model, "data"):
+                wire_id = updated_wire.get("wire_id")
+                wires = self.project_model.data.setdefault("wires", [])
+                
+                # Find and replace in the master project wires list
+                for i, w in enumerate(wires):
+                    if w.get("wire_id") == wire_id:
+                        wires[i] = updated_wire
+                        break
+
             # Refresh table view and recalculate bundle diameter
             self._populate_wire_table()
             self._refresh_calculations()
@@ -117,18 +143,3 @@ class BundleCalculationDialog(QDialog):
             # Persist changes to database / project file
             if self.project_model and hasattr(self.project_model, "data"):
                 DatabaseManager.save_project(self.project_model.data)
-
-    def save_data(self):
-        text = self.override_input.text().strip()
-        if not text:
-            self.bundle_data.pop("override_diameter_mm", None)
-        else:
-            try:
-                self.bundle_data["override_diameter_mm"] = float(text)
-            except ValueError:
-                pass
-                
-        if self.project_model and hasattr(self.project_model, "data"):
-            DatabaseManager.save_project(self.project_model.data)
-            
-        self.accept()

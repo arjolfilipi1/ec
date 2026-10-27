@@ -3,7 +3,7 @@ import os,uuid
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QAction, QMenuBar, QSplitter, QInputDialog, QUndoStack,QLineEdit,QDialog
-    ,QFileDialog,QMessageBox
+    ,QFileDialog,QMessageBox,QTabWidget
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QKeySequence
@@ -17,7 +17,7 @@ from ui.project_tree import HarnessProjectTreeView
 from ui.bundle_dialog import BundlePropertiesDialog
 from ui.cad_canvas import HarnessCADCanvas
 from commands.harness_commands import AddNodeCommand, RemoveNodeCommand,AddWireCommand,RemoveWireCommand,MoveNodeCommand,BreakBundleCommand
-
+from ui.wires_tab import WiresTabWidget
 class HarnessEditorWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -78,7 +78,7 @@ class HarnessEditorWindow(QMainWindow):
         """Refreshes tree view and canvas whenever model state changes (undo/redo/edit)."""
         self.project_tree.load_project(self.current_project)
         self.cad_canvas.load_topology(self.current_project)
-
+        self.wires_tab.refresh_wires()
     def _load_sample_data(self):
         """Loads a sample multi-branch harness project topology for demonstration[cite: 1]."""
         self.current_project.data = {
@@ -153,7 +153,15 @@ class HarnessEditorWindow(QMainWindow):
         self.project_tree.wireDoubleClicked.connect(self.show_wire_properties)
         self.project_tree.bundleDoubleClicked.connect(self.show_bundle_properties)
         self.project_tree.nodeDoubleClicked.connect(self.show_connector_properties)
-        main_splitter.addWidget(self.project_tree)
+        self.sidebar_tabs = QTabWidget()
+
+        # Existing Project Tree Tab
+        self.sidebar_tabs.addTab(self.project_tree, "Project")
+
+        # New Wires Tab
+        self.wires_tab = WiresTabWidget(self.current_project,self.undo_stack, self)
+        self.sidebar_tabs.addTab(self.wires_tab, "Wires")
+        main_splitter.addWidget(self.sidebar_tabs)
 
         # Center Drawing & Layout Engine Canvas Workspace
         self.cad_canvas = HarnessCADCanvas()
@@ -247,10 +255,10 @@ class HarnessEditorWindow(QMainWindow):
         formboard_action = QAction("Generate 1:1 Formboard", self)
         tools_menu.addAction(formboard_action)
         # Analysis Menu
-        analysis_menu = menubar.addMenu("&Tools")
-        routing_action = analysis_menu.addAction("Bundle Diameter Manager...")
-        routing_action.triggered.connect(self.open_branch_analysis)
-        analysis_menu.addAction(drc_action)
+        analysis_menu = menubar.addMenu("&Analysis")
+        diamter_action = analysis_menu.addAction("Bundle Diameter Manager...")
+        diamter_action.triggered.connect(self.open_branch_analysis)
+
 
     def _init_toolbar(self):
         """Optional: Adds quick-access buttons to a main window toolbar."""
@@ -490,7 +498,7 @@ class HarnessEditorWindow(QMainWindow):
         )
         
         # 2. Open dialog
-        dialog = WirePropertiesDialog(wire_data, self.current_project, self)
+        dialog = WirePropertiesDialog(wire_data, self.current_project,self.undo_stack, self.wires_tab.refresh_wires,self)
         
         if dialog.exec_() == QDialog.Accepted:
             for w in self.current_project.data.get("wires", []):
@@ -544,6 +552,7 @@ class HarnessEditorWindow(QMainWindow):
                     self.current_project = HarnessProjectModel(project_data)
                     self.undo_stack.clear()
                     self.refresh_views()
+                    self.wires_tab.refresh_wires()
                     self.statusBar().showMessage(f"Successfully loaded local JSON project from {file_path}")
                 else:
                     QMessageBox.warning(self, "Load Warning", "The selected JSON file is empty.")

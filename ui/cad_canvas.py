@@ -509,7 +509,10 @@ class HarnessCADCanvas(QGraphicsView):
         self.wire_items = {}
         self.table_items = {}  # Added to track table items
         self.active_dragging_nodes = {}
-
+    def re_load_topology(self):
+        self.load_topology(self.current_project)
+        print("update")
+        self.update()
     def load_topology(self, project_model: HarnessProjectModel):
         self.current_project = project_model
         self.scene.clear()
@@ -755,7 +758,117 @@ class HarnessCADCanvas(QGraphicsView):
                 self.nodesMoved.emit(moved_data)
             
             self.active_dragging_nodes = {}
+    def draw_highlighted_wires(self, painter: QPainter):
+        """Renders highlighted wires directly along their stored routed_bundle_ids."""
+        if not self.current_project or not hasattr(self.current_project, "data"):
+            return
+            
+        data = self.current_project.data
+        wires = data.get("wires", [])
+        
+        # Build a quick lookup dictionary for nodes and bundles
+        nodes = {n.get("node_id"): n for n in data.get("nodes", [])}
+        # Support both 'bundles' or 'branches' key variants depending on your schema
+        bundles = {b.get("bundle_id") or b.get("branch_id") or b.get("id"): b for b in data.get("bundles", data.get("branches", []))}
+        
+        # Filter for currently highlighted wires
+        highlighted_wires = [w for w in wires if w.get("is_highlighted", False)]
+        if not highlighted_wires:
+            return
 
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing, True)
+
+        for wire_idx, wire in enumerate(highlighted_wires):
+            # Directly retrieve the stored bundle path for this wire
+            routed_bundle_ids = wire.get("routed_bundle_ids", [])
+            if not routed_bundle_ids:
+                continue
+                
+            # Resolve wire colors
+            color_code = wire.get("color", "BK")
+            stripe_code = wire.get("stripe_code", "")
+            base_hex = self._get_color_hex(color_code)
+            stripe_hex = self._get_color_hex(stripe_code) if stripe_code else None
+            
+            base_color = QColor(base_hex)
+            
+            # Setup pen styling (dashed if striped)
+            pen_width = 2.5
+            pen = QPen(base_color, pen_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+            if stripe_hex:
+                pen.setStyle(Qt.DashLine)
+
+            painter.setPen(pen)
+
+            # Draw segments for each bundle in the wire's route
+            for bundle_id in routed_bundle_ids:
+                bundle = bundles.get(bundle_id)
+                if not bundle:
+                    print("no bundle")
+                    continue
+                    
+                u = bundle.get("start_node_id") or bundle.get("from_node")
+                v = bundle.get("end_node_id") or bundle.get("to_node")
+                
+                if u not in nodes or v not in nodes:
+                    continue
+                    
+                pt1 = self._get_node_position(nodes[u])
+                pt2 = self._get_node_position(nodes[v])
+                
+                # Apply a slight parallel offset if multiple wires are highlighted together
+                offset_vector = self._calculate_parallel_offset(pt1, pt2, wire_idx)
+                print(offset_vector)
+                painter.drawLine(pt1 + offset_vector, pt2 + offset_vector)
+
+        painter.restore()
+
+    def _get_node_position(self, node_dict: dict) -> QPointF:
+        x = node_dict.get("x", 0.0)
+        y = node_dict.get("y", 0.0)
+        return QPointF(x, y)
+
+    def _calculate_parallel_offset(self, pt1: QPointF, pt2: QPointF, index: int) -> QPointF:
+        if index == 0:
+            return QPointF(0, 0)
+        
+        dx = pt2.x() - pt1.x()
+        dy = pt2.y() - pt1.y()
+        length = (dx ** 2 + dy ** 2) ** 0.5
+        if length == 0:
+            return QPointF(0, 0)
+            
+        nx = -dy / length
+        ny = dx / length
+        spacing = 3.0
+        multiplier = ((index + 1) // 2) * (1 if index % 2 != 0 else -1)
+        
+        return QPointF(nx * spacing * multiplier, ny * spacing * multiplier)
+
+    def _get_color_hex(self, code: str) -> str:
+        try:
+            colors = DatabaseManager.get_colors()
+            for col in colors:
+                if col.get("code") == code:
+                    h = col.get("hex") or col.get("color_hex")
+                    if h:
+                        return h
+        except Exception as e:
+            print(str(e))
+            pass
+            
+        mapping = {
+            "BK": "#1a1a1a", "BN": "#8B4513", "RD": "#CC0000",
+            "OG": "#FF8C00", "YE": "#D4AC0D", "GN": "#008000",
+            "BU": "#0000CC", "VT": "#800080", "GY": "#7F7F7F",
+            "WH": "#E5E5E5", "PK": "#FF69B4",
+        }
+        return mapping.get(code.upper(), "#7F7F7F")
+    def drawForeground(self, painter: QPainter, rect):
+        """Automatically transformed to Scene coordinates by QGraphicsView."""
+        super().drawForeground(painter, rect)
+        self.draw_highlighted_wires(painter)
     def wheelEvent(self, event: QWheelEvent):
         zoom_in_factor = 1.15
         zoom_out_factor = 1.0 / zoom_in_factor

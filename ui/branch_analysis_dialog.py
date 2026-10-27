@@ -14,7 +14,7 @@ class BranchAnalysisDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Branch & Covering Analysis (Edit Diameters)")
         self.resize(950, 520)
-        
+        self.main_window = parent
         self.project_model = project_model
         self._init_ui()
         self._load_branch_data()
