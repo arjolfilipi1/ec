@@ -830,7 +830,8 @@
         "BUN-1FCB",
         "BUN-AFEE",
         "BUN-F5AD"
-      ]
+      ],
+      "is_highlighted": false
     },
     {
       "wire_id": "GM2314",
@@ -855,7 +856,7 @@
         "BUN-6334",
         "BUN-F4EB"
       ],
-      "is_highlighted": true
+      "is_highlighted": false
     }
   ],
   "cables": []

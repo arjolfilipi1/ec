@@ -96,7 +96,7 @@ class WiresTabWidget(QWidget):
             wire_pn = w.get("wire_part_number", "")
             color_code = w.get("color", "BK")
             
-            item = QTableWidgetItem(wire_pn)
+            item = QTableWidgetItem(wire_pn or color_code)
             hex_color = self._get_hex_for_color_code(color_code)
             
             if hex_color:
@@ -128,7 +128,7 @@ class WiresTabWidget(QWidget):
             colors = DatabaseManager.get_colors()
             for col in colors:
                 if col.get("code") == code:
-                    h = col.get("hex") or col.get("color_hex")
+                    h = col.get("hex") or col.get("hex_value")
                     if h:
                         return h
         except Exception:

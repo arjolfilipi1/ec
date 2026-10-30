@@ -511,7 +511,6 @@ class HarnessCADCanvas(QGraphicsView):
         self.active_dragging_nodes = {}
     def re_load_topology(self):
         self.load_topology(self.current_project)
-        print("update")
         self.update()
     def load_topology(self, project_model: HarnessProjectModel):
         self.current_project = project_model
@@ -780,12 +779,10 @@ class HarnessCADCanvas(QGraphicsView):
         painter.setRenderHint(QPainter.Antialiasing, True)
 
         for wire_idx, wire in enumerate(highlighted_wires):
-            # Directly retrieve the stored bundle path for this wire
             routed_bundle_ids = wire.get("routed_bundle_ids", [])
             if not routed_bundle_ids:
                 continue
                 
-            # Resolve wire colors
             color_code = wire.get("color", "BK")
             stripe_code = wire.get("stripe_code", "")
             base_hex = self._get_color_hex(color_code)
@@ -793,19 +790,15 @@ class HarnessCADCanvas(QGraphicsView):
             
             base_color = QColor(base_hex)
             
-            # Setup pen styling (dashed if striped)
-            pen_width = 2.5
+            # Make the wire thick enough to stand out over bundles (e.g., width 6)
+            pen_width = 6.0
             pen = QPen(base_color, pen_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
             if stripe_hex:
                 pen.setStyle(Qt.DashLine)
 
-            painter.setPen(pen)
-
-            # Draw segments for each bundle in the wire's route
             for bundle_id in routed_bundle_ids:
                 bundle = bundles.get(bundle_id)
                 if not bundle:
-                    print("no bundle")
                     continue
                     
                 u = bundle.get("start_node_id") or bundle.get("from_node")
@@ -817,16 +810,23 @@ class HarnessCADCanvas(QGraphicsView):
                 pt1 = self._get_node_position(nodes[u])
                 pt2 = self._get_node_position(nodes[v])
                 
-                # Apply a slight parallel offset if multiple wires are highlighted together
                 offset_vector = self._calculate_parallel_offset(pt1, pt2, wire_idx)
-                print(offset_vector)
+                
+                # 1. Draw a contrasting outer halo (e.g., white or dark border) so it stands out against any bundle style
+                halo_pen = QPen(QColor(255, 255, 255), pen_width + 3, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+                painter.setPen(halo_pen)
+                painter.drawLine(pt1 + offset_vector, pt2 + offset_vector)
+                
+                # 2. Draw the actual wire on top
+                painter.setPen(pen)
                 painter.drawLine(pt1 + offset_vector, pt2 + offset_vector)
 
         painter.restore()
 
     def _get_node_position(self, node_dict: dict) -> QPointF:
-        x = node_dict.get("x", 0.0)
-        y = node_dict.get("y", 0.0)
+        pos = node_dict.get("position_2d", {})
+        x = pos.get("x", node_dict.get("x", 0.0))
+        y = pos.get("y", node_dict.get("y", 0.0))
         return QPointF(x, y)
 
     def _calculate_parallel_offset(self, pt1: QPointF, pt2: QPointF, index: int) -> QPointF:
@@ -850,21 +850,22 @@ class HarnessCADCanvas(QGraphicsView):
         try:
             colors = DatabaseManager.get_colors()
             for col in colors:
+                print(col.get("code"),code,col.get("code")==code)
                 if col.get("code") == code:
-                    h = col.get("hex") or col.get("color_hex")
+                    h = col.get("hex") or col.get("hex_value")
                     if h:
+                        print("found ",code)
                         return h
         except Exception as e:
             print(str(e))
             pass
             
         mapping = {
-            "BK": "#1a1a1a", "BN": "#8B4513", "RD": "#CC0000",
-            "OG": "#FF8C00", "YE": "#D4AC0D", "GN": "#008000",
-            "BU": "#0000CC", "VT": "#800080", "GY": "#7F7F7F",
-            "WH": "#E5E5E5", "PK": "#FF69B4",
+            "BK": "#1a1a1a"
         }
-        return mapping.get(code.upper(), "#7F7F7F")
+        def_code = mapping.get(code.upper(), "#7F7F7F")
+        print("not found",code)
+        return def_code
     def drawForeground(self, painter: QPainter, rect):
         """Automatically transformed to Scene coordinates by QGraphicsView."""
         super().drawForeground(painter, rect)

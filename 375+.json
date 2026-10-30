@@ -1,0 +1,885 @@
+{
+  "project_id": "proj-9ed9e455",
+  "project_name": "New Harness Project",
+  "revision": "A",
+  "units": "MM_AWG",
+  "nodes": [
+    {
+      "node_id": "stvbt 02",
+      "part_number": "1",
+      "ref_designator": "STVBT 02",
+      "position_2d": {
+        "x": 105.0,
+        "y": 124.0
+      },
+      "pins": [
+        {
+          "cavity_id": "1",
+          "pin_number": "1",
+          "insertion_depth_mm": 3.5
+        },
+        {
+          "cavity_id": "2",
+          "pin_number": "2",
+          "insertion_depth_mm": 3.0
+        }
+      ],
+      "table_config": {
+        "offset_2d": {
+          "x": -69.0,
+          "y": -109.0
+        }
+      }
+    },
+    {
+      "node_id": "stvbt 01",
+      "part_number": "1",
+      "ref_designator": "STVBT 01",
+      "position_2d": {
+        "x": 90.0,
+        "y": 304.0
+      },
+      "pins": [
+        {
+          "cavity_id": "1",
+          "pin_number": "1",
+          "insertion_depth_mm": 3.5
+        },
+        {
+          "cavity_id": "2",
+          "pin_number": "2",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "3",
+          "pin_number": "3",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "4",
+          "pin_number": "4",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "5",
+          "pin_number": "5",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "6",
+          "pin_number": "6",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "7",
+          "pin_number": "7",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "8",
+          "pin_number": "8",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "9",
+          "pin_number": "9",
+          "insertion_depth_mm": 3.0
+        }
+      ],
+      "table_config": {
+        "offset_2d": {
+          "x": -180.0,
+          "y": 63.0
+        }
+      }
+    },
+    {
+      "node_id": "stvbt 13",
+      "part_number": "1",
+      "ref_designator": "STVBT 13",
+      "position_2d": {
+        "x": 615.1580246330113,
+        "y": -13.180264457933049
+      },
+      "pins": [
+        {
+          "cavity_id": "1",
+          "pin_number": "1",
+          "insertion_depth_mm": 3.5
+        },
+        {
+          "cavity_id": "2",
+          "pin_number": "2",
+          "insertion_depth_mm": 3.0
+        }
+      ],
+      "table_config": {
+        "offset_2d": {
+          "x": -172.1,
+          "y": -132.5
+        }
+      }
+    },
+    {
+      "node_id": "stvbt 03",
+      "part_number": "1",
+      "ref_designator": "STVBT 03",
+      "position_2d": {
+        "x": 897.1684847031247,
+        "y": -43.871380390624836
+      },
+      "pins": [
+        {
+          "cavity_id": "1",
+          "pin_number": "1",
+          "insertion_depth_mm": 3.5
+        },
+        {
+          "cavity_id": "2",
+          "pin_number": "2",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "3",
+          "pin_number": "3",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "4",
+          "pin_number": "4",
+          "insertion_depth_mm": 3.0
+        }
+      ],
+      "table_config": {
+        "offset_2d": {
+          "x": -50.4,
+          "y": -195.1
+        }
+      }
+    },
+    {
+      "node_id": "stvbt 14",
+      "part_number": "1",
+      "ref_designator": "STVBT 14",
+      "position_2d": {
+        "x": 1041.6958510937498,
+        "y": 158.30159712500011
+      },
+      "pins": [
+        {
+          "cavity_id": "1",
+          "pin_number": "1",
+          "insertion_depth_mm": 3.5
+        },
+        {
+          "cavity_id": "2",
+          "pin_number": "2",
+          "insertion_depth_mm": 3.0
+        }
+      ],
+      "table_config": {
+        "offset_2d": {
+          "x": 81.8,
+          "y": -212.1
+        }
+      }
+    },
+    {
+      "node_id": "stvbt 12",
+      "part_number": "1",
+      "ref_designator": "STVBT 12",
+      "position_2d": {
+        "x": 1145.3539999999996,
+        "y": 168.80912500000005
+      },
+      "pins": [
+        {
+          "cavity_id": "1",
+          "pin_number": "1",
+          "insertion_depth_mm": 3.5
+        },
+        {
+          "cavity_id": "2",
+          "pin_number": "2",
+          "insertion_depth_mm": 3.0
+        }
+      ],
+      "table_config": {
+        "offset_2d": {
+          "x": 97.0,
+          "y": -118.0
+        }
+      }
+    },
+    {
+      "node_id": "stvbt 06",
+      "part_number": "1",
+      "ref_designator": "STVBT 06",
+      "position_2d": {
+        "x": 1309.2327499999997,
+        "y": 515.6958749999999
+      },
+      "pins": [
+        {
+          "cavity_id": "1",
+          "pin_number": "1",
+          "insertion_depth_mm": 3.5
+        },
+        {
+          "cavity_id": "2",
+          "pin_number": "2",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "3",
+          "pin_number": "3",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "4",
+          "pin_number": "4",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "5",
+          "pin_number": "5",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "6",
+          "pin_number": "6",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "7",
+          "pin_number": "7",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "8",
+          "pin_number": "8",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "9",
+          "pin_number": "9",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "10",
+          "pin_number": "10",
+          "insertion_depth_mm": 3.0
+        }
+      ],
+      "table_config": {
+        "offset_2d": {
+          "x": -326.7,
+          "y": 25.4
+        }
+      }
+    },
+    {
+      "node_id": "z_DEAB",
+      "part_number": "SPLICE-Z-JUNCTION",
+      "ref_designator": "Z1",
+      "position_2d": {
+        "x": 737.7500000000002,
+        "y": 279.04999999999995
+      },
+      "formboard_position_2d": {
+        "x": 787.2,
+        "y": 57.1
+      },
+      "pins": [],
+      "table_config": {
+        "offset_2d": {
+          "x": 50,
+          "y": -40
+        },
+        "columns": [
+          {
+            "id": "cavity",
+            "label": "Cav",
+            "width": 35
+          },
+          {
+            "id": "pin",
+            "label": "Pin",
+            "width": 35
+          },
+          {
+            "id": "signal",
+            "label": "Signal",
+            "width": 70
+          },
+          {
+            "id": "wire_id",
+            "label": "Wire",
+            "width": 60
+          },
+          {
+            "id": "color",
+            "label": "Color",
+            "width": 45
+          }
+        ],
+        "visible": true
+      },
+      "is_junction": true
+    },
+    {
+      "node_id": "z_557E",
+      "part_number": "SPLICE-Z-JUNCTION",
+      "ref_designator": "Z2",
+      "position_2d": {
+        "x": 982.8000000000002,
+        "y": 280.5
+      },
+      "formboard_position_2d": {
+        "x": 1031.0,
+        "y": 259.5
+      },
+      "pins": [],
+      "table_config": {
+        "offset_2d": {
+          "x": 50,
+          "y": -40
+        },
+        "columns": [
+          {
+            "id": "cavity",
+            "label": "Cav",
+            "width": 35
+          },
+          {
+            "id": "pin",
+            "label": "Pin",
+            "width": 35
+          },
+          {
+            "id": "signal",
+            "label": "Signal",
+            "width": 70
+          },
+          {
+            "id": "wire_id",
+            "label": "Wire",
+            "width": 60
+          },
+          {
+            "id": "color",
+            "label": "Color",
+            "width": 45
+          }
+        ],
+        "visible": true
+      },
+      "is_junction": true
+    },
+    {
+      "node_id": "z_F2DC",
+      "part_number": "SPLICE-Z-JUNCTION",
+      "ref_designator": "Z3",
+      "position_2d": {
+        "x": 796.4000000000001,
+        "y": 99.6
+      },
+      "formboard_position_2d": {
+        "x": 780.4,
+        "y": 87.6
+      },
+      "pins": [],
+      "table_config": {
+        "offset_2d": {
+          "x": 50,
+          "y": -40
+        },
+        "columns": [
+          {
+            "id": "cavity",
+            "label": "Cav",
+            "width": 35
+          },
+          {
+            "id": "pin",
+            "label": "Pin",
+            "width": 35
+          },
+          {
+            "id": "signal",
+            "label": "Signal",
+            "width": 70
+          },
+          {
+            "id": "wire_id",
+            "label": "Wire",
+            "width": 60
+          },
+          {
+            "id": "color",
+            "label": "Color",
+            "width": 45
+          }
+        ],
+        "visible": true
+      },
+      "is_junction": true
+    },
+    {
+      "node_id": "LV1",
+      "part_number": "SPLICE-Z-JUNCTION",
+      "ref_designator": "LV1",
+      "position_2d": {
+        "x": 455.8750000000001,
+        "y": 300.525
+      },
+      "formboard_position_2d": {
+        "x": 413.8750000000001,
+        "y": 291.525
+      },
+      "pins": [],
+      "table_config": {
+        "offset_2d": {
+          "x": -159.0,
+          "y": 111.0
+        },
+        "columns": [],
+        "visible": true
+      },
+      "is_junction": true
+    },
+    {
+      "node_id": "LV2",
+      "part_number": "SPLICE-Z-JUNCTION",
+      "ref_designator": "LV2",
+      "position_2d": {
+        "x": 570.7916250000003,
+        "y": 297.80837500000007
+      },
+      "formboard_position_2d": {
+        "x": 627.3125000000002,
+        "y": 282.28749999999997
+      },
+      "pins": [],
+      "table_config": {
+        "offset_2d": {
+          "x": 38.0,
+          "y": 103.0
+        },
+        "columns": [],
+        "visible": true
+      },
+      "is_junction": true
+    }
+  ],
+  "bundles": [
+    {
+      "bundle_id": "BUN-4E19",
+      "start_node_id": "stvbt 06",
+      "end_node_id": "z_557E",
+      "length_mm": 112.9,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-8A24",
+      "start_node_id": "z_557E",
+      "end_node_id": "z_DEAB",
+      "length_mm": 112.9,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-2070",
+      "start_node_id": "z_557E",
+      "end_node_id": "stvbt 12",
+      "length_mm": 152.9,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-AFEE",
+      "start_node_id": "z_DEAB",
+      "end_node_id": "z_F2DC",
+      "length_mm": 112.9,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-F5AD",
+      "start_node_id": "z_F2DC",
+      "end_node_id": "stvbt 03",
+      "length_mm": 112.9,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-AC7A",
+      "start_node_id": "z_F2DC",
+      "end_node_id": "stvbt 13",
+      "length_mm": 204.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-F4EB",
+      "start_node_id": "LV1",
+      "end_node_id": "stvbt 01",
+      "length_mm": 369.8,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-1FCB",
+      "start_node_id": "z_DEAB",
+      "end_node_id": "LV2",
+      "length_mm": 184.9,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-6334",
+      "start_node_id": "LV2",
+      "end_node_id": "LV1",
+      "length_mm": 184.9,
+      "coverings": []
+    }
+  ],
+  "wires": [
+    {
+      "wire_id": "GM2311",
+      "signal_name": "HZ",
+      "part_number": "WIRE-FLRY-0.75-GEN",
+      "color": "OR",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
+      "endpoints": [
+        {
+          "node_id": "stvbt 06",
+          "cavity_id": "7"
+        },
+        {
+          "node_id": "stvbt 03",
+          "cavity_id": "3"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-4E19",
+        "BUN-8A24",
+        "BUN-AFEE",
+        "BUN-F5AD"
+      ],
+      "extra_length_mm": 20.0,
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.75-OR"
+    },
+    {
+      "wire_id": "GM2317",
+      "signal_name": "GWS 1",
+      "part_number": "WIRE-FLRY-0.75-GEN",
+      "color": "YE",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
+      "endpoints": [
+        {
+          "node_id": "stvbt 01",
+          "cavity_id": "5"
+        },
+        {
+          "node_id": "stvbt 12",
+          "cavity_id": "1"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-1FCB",
+        "BUN-6334",
+        "BUN-F4EB",
+        "BUN-8A24",
+        "BUN-2070"
+      ],
+      "extra_length_mm": 20.0,
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.75-YE"
+    },
+    {
+      "wire_id": "GM2318",
+      "signal_name": "SBE 2",
+      "part_number": "WIRE-FLRY-0.75-GEN",
+      "color": "GN",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
+      "endpoints": [
+        {
+          "node_id": "stvbt 01",
+          "cavity_id": "7"
+        },
+        {
+          "node_id": "stvbt 13",
+          "cavity_id": "2"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-1FCB",
+        "BUN-6334",
+        "BUN-F4EB",
+        "BUN-AFEE",
+        "BUN-AC7A"
+      ],
+      "extra_length_mm": 20.0,
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.75-GN"
+    },
+    {
+      "wire_id": "GM2319",
+      "signal_name": "SBE 1",
+      "part_number": "WIRE-FLRY-0.75-GEN",
+      "color": "BU",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
+      "endpoints": [
+        {
+          "node_id": "stvbt 01",
+          "cavity_id": "8"
+        },
+        {
+          "node_id": "stvbt 13",
+          "cavity_id": "1"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-1FCB",
+        "BUN-6334",
+        "BUN-F4EB",
+        "BUN-AFEE",
+        "BUN-AC7A"
+      ],
+      "extra_length_mm": 20.0,
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.75-BU"
+    },
+    {
+      "wire_id": "GM2322",
+      "signal_name": "Heat 2",
+      "part_number": "WIRE-FLRY-0.75-GEN",
+      "color": "BK",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
+      "endpoints": [
+        {
+          "node_id": "stvbt 06",
+          "cavity_id": "4"
+        },
+        {
+          "node_id": "stvbt 03",
+          "cavity_id": "2"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-4E19",
+        "BUN-8A24",
+        "BUN-AFEE",
+        "BUN-F5AD"
+      ],
+      "extra_length_mm": 20.0,
+      "stripe_color": "WH",
+      "wire_part_number": "WIRE-0.75-BK"
+    },
+    {
+      "wire_id": "GM2315",
+      "signal_name": "24V",
+      "part_number": "WIRE-FLRY-0.75-GEN",
+      "color": "RD",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
+      "endpoints": [
+        {
+          "node_id": "stvbt 01",
+          "cavity_id": "3"
+        },
+        {
+          "node_id": "LV1",
+          "cavity_id": "x"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-F4EB"
+      ],
+      "extra_length_mm": 20.0,
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.75-RD"
+    },
+    {
+      "wire_id": "GM2316",
+      "signal_name": "24V",
+      "part_number": "WIRE-FLRY-0.75-GEN",
+      "color": "RD",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
+      "endpoints": [
+        {
+          "node_id": "stvbt 06",
+          "cavity_id": "8"
+        },
+        {
+          "node_id": "LV1",
+          "cavity_id": "x"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-4E19",
+        "BUN-8A24",
+        "BUN-1FCB",
+        "BUN-6334"
+      ],
+      "extra_length_mm": 20.0,
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.75-RD"
+    },
+    {
+      "wire_id": "GM2320",
+      "signal_name": "24V",
+      "part_number": "WIRE-FLRY-0.75-GEN",
+      "color": "RD",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
+      "endpoints": [
+        {
+          "node_id": "stvbt 03",
+          "cavity_id": "4"
+        },
+        {
+          "node_id": "LV1",
+          "cavity_id": "x"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-F5AD",
+        "BUN-AFEE",
+        "BUN-1FCB",
+        "BUN-6334"
+      ],
+      "extra_length_mm": 20.0,
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.75-RD"
+    },
+    {
+      "wire_id": "GM2321",
+      "signal_name": "24V",
+      "part_number": "WIRE-FLRY-0.75-GEN",
+      "color": "RD",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
+      "endpoints": [
+        {
+          "node_id": "stvbt 06",
+          "cavity_id": "3"
+        },
+        {
+          "node_id": "LV1",
+          "cavity_id": "x"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-4E19",
+        "BUN-8A24",
+        "BUN-1FCB",
+        "BUN-6334"
+      ],
+      "extra_length_mm": 20.0,
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.75-RD"
+    },
+    {
+      "wire_id": "GM2312",
+      "signal_name": "GND",
+      "part_number": "WIRE-FLRY-0.75-GEN",
+      "color": "BN",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
+      "endpoints": [
+        {
+          "node_id": "stvbt 12",
+          "cavity_id": "2"
+        },
+        {
+          "node_id": "LV2",
+          "cavity_id": "x"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-2070",
+        "BUN-8A24",
+        "BUN-1FCB"
+      ],
+      "extra_length_mm": 20.0,
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.75-BN"
+    },
+    {
+      "wire_id": "GM2313",
+      "signal_name": "GND",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
+      "color": "BN",
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.75-BN",
+      "extra_length_mm": 0.0,
+      "endpoints": [
+        {
+          "node_id": "LV2",
+          "cavity_id": "x"
+        },
+        {
+          "node_id": "stvbt 03",
+          "cavity_id": "1"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-1FCB",
+        "BUN-AFEE",
+        "BUN-F5AD"
+      ],
+      "is_highlighted": false
+    },
+    {
+      "wire_id": "GM2314",
+      "signal_name": "GND",
+      "gauge": 0.75,
+      "outer_diameter_mm": 1.9,
+      "color": "BN",
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.75-BN",
+      "extra_length_mm": 0.0,
+      "endpoints": [
+        {
+          "node_id": "LV2",
+          "cavity_id": "x"
+        },
+        {
+          "node_id": "stvbt 01",
+          "cavity_id": "4"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-6334",
+        "BUN-F4EB"
+      ],
+      "is_highlighted": false
+    },
+    {
+      "wire_id": "SEN1",
+      "signal_name": "GST 1",
+      "gauge": 0.5,
+      "outer_diameter_mm": 1.6,
+      "color": "WH",
+      "stripe_color": "OR",
+      "wire_part_number": "WIRE-0.5-WH",
+      "extra_length_mm": 0.0,
+      "endpoints": [
+        {
+          "node_id": "stvbt 02",
+          "cavity_id": "1"
+        },
+        {
+          "node_id": "stvbt 14",
+          "cavity_id": "1"
+        }
+      ],
+      "routed_bundle_ids": [],
+      "is_highlighted": false
+    }
+  ],
+  "cables": []
+}

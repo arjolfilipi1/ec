@@ -10,6 +10,7 @@ class WireRoutingManagerDialog(QDialog):
     
     def __init__(self, project_model: HarnessProjectModel, parent=None):
         super().__init__(parent)
+        self.main_window = parent
         self.setWindowTitle("Interactive Wire Routing & Pathfinding Manager")
         self.resize(700, 450)
         
@@ -65,7 +66,7 @@ class WireRoutingManagerDialog(QDialog):
 
     def _load_wires(self):
         self.wire_list_widget.clear()
-        for wire in self.project_model.data.get("wires", []):
+        for wire in self.main_window.current_project.data.get("wires", []):
             w_id = wire.get("wire_id", "Unknown")
             sig = wire.get("signal_name", "")
             item_text = f"{w_id} ({sig})" if sig else w_id
@@ -108,7 +109,7 @@ class WireRoutingManagerDialog(QDialog):
         end_node = endpoints[1].get("node_id")
         
         # 1. Attempt standard BFS continuous path search
-        path = self.project_model.find_bundle_path(start_node, end_node)
+        path = self.main_window.current_project.find_bundle_path(start_node, end_node)
         
         if path:
             self.path_text_edit.setText(", ".join(path))
@@ -116,9 +117,9 @@ class WireRoutingManagerDialog(QDialog):
             QMessageBox.information(self, "Pathfinder Success", f"Successfully computed continuous path: {', '.join(path)}")
         else:
             # 2. Fallback: Find all bundles connected to start and end nodes to construct a path
-            start_bundles = [b["bundle_id"] for b in self.project_model.data.get("bundles", []) 
+            start_bundles = [b["bundle_id"] for b in self.main_window.current_project.data.get("bundles", []) 
                              if b.get("start_node_id") == start_node or b.get("end_node_id") == start_node]
-            end_bundles = [b["bundle_id"] for b in self.project_model.data.get("bundles", []) 
+            end_bundles = [b["bundle_id"] for b in self.main_window.current_project.data.get("bundles", []) 
                            if b.get("start_node_id") == end_node or b.get("end_node_id") == end_node]
             
             # Combine unique candidate bundles connecting start and end regions
@@ -126,7 +127,7 @@ class WireRoutingManagerDialog(QDialog):
             
             if not fallback_path:
                 # If no bundles touch either node, select all project bundles as default candidate path
-                fallback_path = [b["bundle_id"] for b in self.project_model.data.get("bundles", [])]
+                fallback_path = [b["bundle_id"] for b in self.main_window.current_project.data.get("bundles", [])]
 
             self.path_text_edit.setText(", ".join(fallback_path))
             self.current_wire["routed_bundle_ids"] = fallback_path

@@ -1,0 +1,182 @@
+{
+  "project_id": "proj-9988-aabb",
+  "project_name": "Engine Bay Harness - Model X",
+  "revision": "B",
+  "units": "MM_AWG",
+  "nodes": [
+    {
+      "node_id": "node_ecu",
+      "part_number": "CONN-ECU-48P",
+      "ref_designator": "X1",
+      "position_2d": {
+        "x": 206.0,
+        "y": -192.99999999999997
+      },
+      "pins": [
+        {
+          "cavity_id": "1",
+          "signal_name": "CAN_H",
+          "insertion_depth_mm": 4.5
+        },
+        {
+          "cavity_id": "2",
+          "signal_name": "CAN_L",
+          "insertion_depth_mm": 4.5
+        }
+      ]
+    },
+    {
+      "node_id": "node_sensor",
+      "part_number": "CONN-SEN-3P",
+      "ref_designator": "X2",
+      "position_2d": {
+        "x": 600.0,
+        "y": 200.0
+      },
+      "pins": [
+        {
+          "cavity_id": "A",
+          "signal_name": "CAN_H",
+          "insertion_depth_mm": 3.0
+        },
+        {
+          "cavity_id": "B",
+          "signal_name": "CAN_L",
+          "insertion_depth_mm": 3.0
+        }
+      ]
+    },
+    {
+      "node_id": "node_x3",
+      "part_number": "CONN-X3-2P",
+      "ref_designator": "X3",
+      "position_2d": {
+        "x": 350.0,
+        "y": 300.0
+      },
+      "pins": [
+        {
+          "cavity_id": "1",
+          "signal_name": "GND",
+          "insertion_depth_mm": 3.5
+        }
+      ]
+    },
+    {
+      "node_id": "node_junc_19F9",
+      "part_number": "SPLICE-JUNCTION-GEN",
+      "ref_designator": "J1",
+      "position_2d": {
+        "x": 320.5,
+        "y": -11.0
+      },
+      "pins": []
+    },
+    {
+      "node_id": "node_1",
+      "part_number": "1",
+      "ref_designator": "1",
+      "position_2d": {
+        "x": 89.0,
+        "y": 138.0
+      },
+      "pins": [
+        {
+          "cavity_id": "1",
+          "signal_name": "GND",
+          "insertion_depth_mm": 3.5
+        }
+      ]
+    }
+  ],
+  "bundles": [
+    {
+      "bundle_id": "BUN-4424",
+      "start_node_id": "node_ecu",
+      "end_node_id": "node_junc_19F9",
+      "length_mm": 225.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-7405",
+      "start_node_id": "node_junc_19F9",
+      "end_node_id": "node_sensor",
+      "length_mm": 225.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-9999",
+      "start_node_id": "node_x3",
+      "end_node_id": "node_junc_19F9",
+      "length_mm": 180.0,
+      "coverings": []
+    }
+  ],
+  "wires": [
+    {
+      "wire_id": "W-01",
+      "signal_name": "CAN_H",
+      "part_number": "WIRE-FLRY-0.5-YEL",
+      "color": "Yellow",
+      "endpoints": [
+        {
+          "node_id": "node_ecu",
+          "cavity_id": "1"
+        },
+        {
+          "node_id": "node_sensor",
+          "cavity_id": "A"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-4424",
+        "BUN-7405"
+      ],
+      "extra_length_mm": 25.0
+    },
+    {
+      "wire_id": "W-02",
+      "signal_name": "GND",
+      "part_number": "WIRE-FLRY-0.5-GEN",
+      "color": "Blue",
+      "endpoints": [
+        {
+          "node_id": "node_x3",
+          "cavity_id": "1"
+        },
+        {
+          "node_id": "node_ecu",
+          "cavity_id": "2"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-9999",
+        "BUN-4424"
+      ],
+      "extra_length_mm": 20.0
+    },
+    {
+      "wire_id": "1",
+      "signal_name": "1",
+      "gauge": 0.5,
+      "outer_diameter_mm": 1.6,
+      "color": "BK",
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.5-BK",
+      "extra_length_mm": 0.0,
+      "endpoints": [
+        {
+          "node_id": "node_1",
+          "cavity_id": "1"
+        },
+        {
+          "node_id": "node_ecu",
+          "cavity_id": "1"
+        }
+      ],
+      "routed_bundle_ids": [
+        "BUN-4424"
+      ]
+    }
+  ]
+}

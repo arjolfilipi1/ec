@@ -22,7 +22,7 @@ def init_db():
 
     # Harness Projects Table
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS harness_projects (
+        CREATE TABLE IF NOT EXISTS harness_editors (
             project_id TEXT PRIMARY KEY,
             project_name TEXT NOT NULL,
             revision TEXT,
@@ -114,7 +114,7 @@ class DatabaseManager:
         conn.close()
         return [dict(row) for row in rows]
     @staticmethod
-    def save_project(project_data: dict, db_path: str = "harness_project.db"):
+    def save_project(project_data: dict, db_path: str = "harness_editor.db"):
         """Saves project JSON state into a local SQLite database."""
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -192,7 +192,7 @@ class DatabaseManager:
                 })
         return projects
     @staticmethod
-    def init_color_table(db_path: str = "harness_project.db"):
+    def init_color_table(db_path: str = "harness_editor.db"):
         """Initializes the master colors lookup table in SQLite with default automotive color codes."""
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -221,18 +221,19 @@ class DatabaseManager:
         conn.close()
 
     @staticmethod
-    def get_colors(db_path: str = "harness_project.db") -> list:
+    def get_colors(db_path: str = "harness_editor.db") -> list:
         """Retrieves all available wire colors from the database."""
-        DatabaseManager.init_color_table(db_path)
+        # DatabaseManager.init_color_table(db_path)
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute("SELECT code, name, hex_value FROM colors ORDER BY name;")
         rows = cursor.fetchall()
+
         conn.close()
         return [{"code": r[0], "name": r[1], "hex_value": r[2]} for r in rows]
 
     @staticmethod
-    def add_color(code: str, name: str, hex_value: str, db_path: str = "harness_project.db"):
+    def add_color(code: str, name: str, hex_value: str, db_path: str = "harness_editor.db"):
         """Adds a new custom color definition to the database."""
         DatabaseManager.init_color_table(db_path)
         conn = sqlite3.connect(db_path)

@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from database import DatabaseManager
-
+from collections import deque
 class AddWireDialog(QDialog):
     """Unified single window dialog for adding a new wire with master library auto-fill and dynamic pin population."""
     
@@ -13,7 +13,7 @@ class AddWireDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Add New Wire")
         self.resize(500, 580)
-        
+        self.main_window = parent
         self.project_model = project_model
         self.wire_data = {}
         self._init_ui()
@@ -224,7 +224,7 @@ class AddWireDialog(QDialog):
         base_code = self.base_color_combo.currentData() or "BK"
         stripe_code = self.stripe_color_combo.currentData() or ""
 
-        # Collect endpoints using the correct "cavity_id" key
+        # Collect updated endpoints
         endpoints = []
         start_node = self.start_combo.currentData()
         start_pin = self.start_pin_combo.currentText().strip()
@@ -236,19 +236,61 @@ class AddWireDialog(QDialog):
         if end_node:
             endpoints.append({"node_id": end_node, "cavity_id": end_pin})
 
-        self.wire_data = {
-            "wire_id": wire_id,
-            "signal_name": self.signal_input.text().strip(),
-            "gauge": gauge,
-            "outer_diameter_mm": od,
-            "color": base_code,
-            "stripe_color": stripe_code,
-            "wire_part_number": f"WIRE-{gauge}-{base_code}",
-            "extra_length_mm": extra_len,
-            "endpoints": endpoints
-        }
+        # Automatically calculate the routed bundle path through the harness network
+        routed_bundle_ids = self._compute_route(endpoints)
+        print(routed_bundle_ids)
+        # Update the wire dictionary in place
+        self.wire_data["wire_id"] = wire_id
+        self.wire_data["signal_name"] = self.signal_input.text().strip()
+        self.wire_data["gauge"] = gauge
+        self.wire_data["outer_diameter_mm"] = od
+        self.wire_data["color"] = base_code
+        self.wire_data["stripe_color"] = stripe_code
+        self.wire_data["wire_part_number"] = f"WIRE-{gauge}-{base_code}"
+        self.wire_data["extra_length_mm"] = extra_len
+        self.wire_data["endpoints"] = endpoints
+        self.wire_data["routed_bundle_ids"] = routed_bundle_ids  # Stored route path
+
+        # Save project changes to database
+        if self.project_model and hasattr(self.project_model, "data"):
+            DatabaseManager.save_project(self.project_model.data)
+
+        # Refresh parent tab if it exists (e.g., WiresTabWidget)
+        parent_widget = self.parent()
+        if parent_widget and hasattr(parent_widget, "refresh_wires"):
+            parent_widget.refresh_wires()
+
+        # Trigger canvas repaint to show updated highlight/routing
+        main_win = self.window()
+        if main_win and hasattr(main_win, "update"):
+            main_win.update()
+
         self.accept()
 
+    def _compute_route(self, endpoints: list) -> list:
+        """Delegates pathfinding and nearest-bundle snapping directly to HarnessProjectModel."""
+        if len(endpoints) < 2 or not self.project_model:
+            return []
+            
+        start_node = endpoints[0].get("node_id")
+        end_node = endpoints[1].get("node_id")
+        
+        if not start_node or not end_node:
+            return []
+
+        # 1. Ensure unlinked endpoints snap to their nearest bundle segment if supported
+        if hasattr(self.project_model, "find_nearest_bundle_segment"):
+            # If start node isn't directly connected, snap/integrate it
+            pass  # HarnessProjectModel handles internal node-to-bundle resolution if integrated in find_bundle_path
+
+        # 2. Use the project model's built-in pathfinder
+        if hasattr(self.project_model, "find_bundle_path"):
+            path = self.project_model.find_bundle_path(start_node, end_node)
+            if path:
+                # Ensure we return a list of bundle IDs
+                return [b.get("bundle_id") or b.get("branch_id") or b.get("id") if isinstance(b, dict) else b for b in path]
+
+        return []
 
 class EditWireCommand(QUndoCommand):
     """Undoable command for editing wire properties and endpoint routing."""
