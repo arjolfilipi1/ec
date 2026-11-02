@@ -58,7 +58,7 @@ class HarnessProjectModel:
                 ]
 
         default_offset = table_config.get("offset_2d", {"x": 50, "y": -40}) if table_config else {"x": 50, "y": -40}
-
+        print(is_junction)
         node = {
             "node_id": node_id,
             "part_number": part_number,
@@ -94,7 +94,7 @@ class HarnessProjectModel:
             "coverings": coverings or []  # List of dicts: e.g., [{"part_number": "CORR-NW-10", "start_ratio": 0.0, "end_ratio": 1.0}]
         }
         self.data["bundles"].append(bundle)
-
+        return bundle
     def add_cable(self, cable_id: str, signal_name: str, part_number: str, 
                   cable_type: str, endpoints: List[dict], routed_bundle_ids: List[str], 
                   conductors: List[dict], has_shield: bool = True, drain_wire_connected: bool = True):
@@ -244,13 +244,14 @@ class HarnessProjectModel:
         junction_node_id = f"node_z_{uuid.uuid4().hex[:4].upper()}" if not junction_ref.lower().startswith("node_") else junction_ref
         
         # Add node with dual coordinates initialized to the break point
+        print(junction_node_id)
         self.add_node(
             node_id=junction_node_id,
             part_number="SPLICE-Z-JUNCTION",
             ref_designator=junction_ref,
             x=junction_x, y=junction_y,
             fb_x=junction_x, fb_y=junction_y,
-            pins=[]
+            pins=[],is_junction= True
         )
 
         self.data["bundles"] = [b for b in self.data["bundles"] if b["bundle_id"] != bundle_id]
@@ -302,3 +303,69 @@ class HarnessProjectModel:
 
     def to_json(self) -> str:
         return json.dumps(self.data, indent=2)
+    def merge_nodes(self, source_id: str, target_id: str):
+        """Merges a source junction node into a target node, re-routing all connected bundles and wires."""
+        if source_id == target_id:
+            return
+
+        # 1. Re-route bundles connected to source_id to target_id
+        for b in self.data.get("bundles", []):
+            if b["start_node_id"] == source_id:
+                b["start_node_id"] = target_id
+            if b["end_node_id"] == source_id:
+                b["end_node_id"] = target_id
+
+        # Remove self-loop bundles (where start == end after re-routing)
+        self.data["bundles"] = [b for b in self.data["bundles"] if b["start_node_id"] != b["end_node_id"]]
+
+        # 2. Re-route wire and cable endpoints from source_id to target_id
+        for w in self.data.get("wires", []):
+            for ep in w.get("endpoints", []):
+                if ep.get("node_id") == source_id:
+                    ep["node_id"] = target_id
+
+        for c in self.data.get("cables", []):
+            for ep in c.get("endpoints", []):
+                if ep.get("node_id") == source_id:
+                    ep["node_id"] = target_id
+
+        # 3. Safely remove the source node
+        self.data["nodes"] = [n for n in self.data["nodes"] if n["node_id"] != source_id]
+
+    def merge_node_into_bundle(self, node_id: str, bundle_id: str, drop_x: float, drop_y: float):
+        """Snaps an existing node onto a bundle segment, breaking the bundle and re-routing appropriately."""
+        # Update node position to the projection point
+        self.update_node_position(node_id, drop_x, drop_y, is_formboard=False)
+        self.update_node_position(node_id, drop_x, drop_y, is_formboard=True)
+
+        bundle_to_break = next((b for b in self.data.get("bundles", []) if b["bundle_id"] == bundle_id), None)
+        if not bundle_to_break:
+            return
+
+        start_node_id = bundle_to_break["start_node_id"]
+        end_node_id = bundle_to_break["end_node_id"]
+        total_length = bundle_to_break["length_mm"]
+
+        # Remove the original unbroken bundle
+        self.data["bundles"] = [b for b in self.data["bundles"] if b["bundle_id"] != bundle_id]
+
+        # Create two new sub-bundles connecting through this node
+        sub_len = total_length / 2.0
+        b1_id = f"BUN-{uuid.uuid4().hex[:4].upper()}"
+        b2_id = f"BUN-{uuid.uuid4().hex[:4].upper()}"
+
+        self.add_bundle(b1_id, start_node_id, node_id, round(sub_len, 1))
+        self.add_bundle(b2_id, node_id, end_node_id, round(sub_len, 1))
+
+        # Update wire and cable path routes that traversed the original bundle
+        for wire in self.data.get("wires", []):
+            routed = wire.get("routed_bundle_ids", [])
+            if bundle_id in routed:
+                idx = routed.index(bundle_id)
+                routed[idx:idx+1] = [b1_id, b2_id]
+
+        for cable in self.data.get("cables", []):
+            routed = cable.get("routed_bundle_ids", [])
+            if bundle_id in routed:
+                idx = routed.index(bundle_id)
+                routed[idx:idx+1] = [b1_id, b2_id]

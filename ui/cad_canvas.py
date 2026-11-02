@@ -1,11 +1,60 @@
 from PyQt5.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem, QGraphicsItem,
-                                QGraphicsLineItem,QGraphicsEllipseItem,QGraphicsItemGroup,QStyle,QLineEdit)
+                                QGraphicsLineItem,QGraphicsEllipseItem,QGraphicsItemGroup,QStyle,QLineEdit,
+                                 QMenu, QInputDialog, QMessageBox,QDialog)
 from PyQt5.QtCore import Qt, QPointF, pyqtSignal,QPoint
 from PyQt5.QtGui import QPen, QBrush, QColor, QFont, QWheelEvent, QPainter,QPixmap,QTransform
 from models.harness_model import HarnessProjectModel
 import math
+from copy import deepcopy
 from database import DatabaseManager
+from commands.harness_commands import MergeCommand
+from ui.bundle_dialog import BundlePropertiesDialog
+class BundlePatternFactory:
+    """Generates seamlessly repeating pixmap patterns for harness bundle covering"""
 
+    @staticmethod
+    def create_corrugated_pattern(color_hex="#2C3E50", rib_color_hex="#7F8C8D"):
+        """Generates a ribbed/corrugated texture pixmap.""" 
+        pixmap = QPixmap(12, 20) 
+        pixmap.fill(QColor(color_hex))
+
+        painter = QPainter(pixmap)
+        # Draw ribbed highlights/shadows 
+        painter.setPen(QPen(QColor(rib_color_hex), 2)) 
+        painter.drawLine(3, 0, 3, 20) 
+        painter.setPen(QPen(QColor("#1A252F"), 2)) 
+        painter.drawLine(9, 0, 9, 20)
+        painter.end()
+
+        return QBrush(pixmap)
+
+    @staticmethod
+    def create_pvc_pattern(color_hex="#34495E") -> QBrush:
+        """Generates a smooth PVC sleeving texture."""
+        pixmap = QPixmap(16, 16) 
+        pixmap.fill(QColor(color_hex))
+
+        painter = QPainter(pixmap)
+        # Subtle longitudinal sheen lines 
+        painter.setPen(QPen(QColor("#5D6D7E"), 1)) 
+        painter.drawLine(0, 4, 16, 4) 
+        painter.end()
+
+        return QBrush(pixmap)
+
+    @staticmethod
+    def create_tape_pattern(color_hex="#1C2833") -> QBrush:
+        """Generates a diagonal spiraled tape wrap texture.""" 
+        pixmap = QPixmap(16, 16) 
+        pixmap.fill(QColor(color_hex))
+
+        painter = QPainter(pixmap) 
+        painter.setPen(QPen(QColor("#566573"), 1.5)) 
+        # Spiral wrap lines
+        painter.drawLine(0, 16, 16, 0)
+        painter.end()
+
+        return QBrush(pixmap)
 
 class ConnectorTableGraphicsItem(QGraphicsRectItem):
     """Visual table attached to a connector or splice junction node displaying pin/wire mappings and sides."""
@@ -232,35 +281,155 @@ class NodeGraphicsItem(QGraphicsRectItem):
         self.label.setRotation( label_correction)
 
 class JunctionGraphicsItem(QGraphicsEllipseItem):
-    """Custom interactive circle representing a Z-junction / splice node."""
+    """Custom interactive circle representing a Z-junction / splice node with merge-on-drag capabilities."""
     def __init__(self, node_id, x, y, diameter, label_text, canvas_ref):
-        # Define local ellipse centered at (0,0)
         super().__init__(-diameter/2, -diameter/2, diameter, diameter)
         self.node_id = node_id
         self.canvas_ref = canvas_ref
+        self.diameter = diameter
         
         self.setFlag(QGraphicsItem.ItemIsMovable)
         self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.setFlag(QGraphicsItem.ItemSendsGeometryChanges)
         
-        # Position item in scene coordinates
         self.setPos(x, y)
         
-        # Soft amber fill with burnt orange border for Z splices
+        # Default styling: Soft amber fill with burnt orange border
+        self.default_pen = QPen(QColor(211, 84, 0), 2)
+        # Highlight styling: Green outline indicating a valid merge target
+        self.highlight_pen = QPen(QColor(46, 204, 113), 3, Qt.SolidLine)
+        
         self.setBrush(QBrush(QColor(253, 227, 167)))
-        self.setPen(QPen(QColor(211, 84, 0), 2))
+        self.setPen(self.default_pen)
         
         self.label = QGraphicsTextItem(label_text, self)
         self.label.setDefaultTextColor(QColor(180, 100, 0))
         self.label.setFont(QFont("Segoe UI", 8, QFont.Bold))
-        
-        # Place label neatly just below the circle center
         self.label.setPos(-diameter / 2, diameter / 2 + 2)
+
+        # Active merge targets tracked during drag
+        self.target_node_id = None
+        self.target_bundle_id = None
+        self.proj_point = None
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemPositionChange and self.scene():
-            self.canvas_ref.on_node_moved()
+            if self.canvas_ref:
+                self.canvas_ref.on_node_moved()
         return super().itemChange(change, value)
+
+    def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(event)
+        self._check_merge_targets()
+
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        
+        # Execute the merge (which may delete this item during canvas refresh)
+        try:
+            self._execute_merge()
+        except RuntimeError:
+            return  # Item was deleted during merge; exit safely
+
+        # Reset visual state only if the item still exists in the scene
+        try:
+            if self.scene():
+                self.setPen(self.default_pen)
+                self.target_node_id = None
+                self.target_bundle_id = None
+        except RuntimeError:
+            pass
+
+    def _check_merge_targets(self):
+        """Checks proximity to other junction nodes or bundle segments for potential merging."""
+        if not self.canvas_ref or not hasattr(self.canvas_ref, "current_project"):
+            return
+
+        model = self.canvas_ref.current_project
+        data = getattr(model, "data", {})
+        pos = self.pos()
+        px, py = pos.x(), pos.y()
+
+        threshold = 50  # Proximity radius in pixels
+        self.target_node_id = None
+        self.target_bundle_id = None
+        self.proj_point = None
+
+        node_map = {n["node_id"]: n for n in data.get("nodes", [])}
+
+        # 1. Check proximity to other junction nodes
+        for n_id, node in node_map.items():
+            if n_id == self.node_id:
+                continue
+            n_pos = node.get("position_2d", {"x": 0, "y": 0})
+            dist = math.sqrt((px - n_pos["x"])**2 + (py - n_pos["y"])**2)
+            if dist < threshold:
+                self.target_node_id = n_id
+                break
+
+        # 2. If no node target, check proximity to bundle segments
+        if not self.target_node_id:
+            for b in data.get("bundles", []):
+                # Exclude bundles that start or end at this junction node
+                if b.get("start_node_id") == self.node_id or b.get("end_node_id") == self.node_id:
+                    continue
+
+                u_n = node_map.get(b.get("start_node_id"))
+                v_n = node_map.get(b.get("end_node_id"))
+                if not u_n or not v_n:
+                    continue
+
+                ux, uy = u_n["position_2d"]["x"], u_n["position_2d"]["y"]
+                vx, vy = v_n["position_2d"]["x"], v_n["position_2d"]["y"]
+
+                # Point-to-segment distance calculation
+                dx, dy = vx - ux, vy - uy
+                len_sq = dx*dx + dy*dy
+                if len_sq == 0:
+                    continue
+
+                t = max(0.0, min(1.0, ((px - ux) * dx + (py - uy) * dy) / len_sq))
+                cx, cy = ux + t * dx, uy + t * dy
+                dist = math.sqrt((px - cx)**2 + (py - cy)**2)
+
+                if dist < threshold:
+                    self.target_bundle_id = b.get("bundle_id")
+                    self.proj_point = (cx, cy)
+                    break
+
+        # Apply visual feedback (Green outline if a target is found)
+        if self.target_node_id or self.target_bundle_id:
+            self.setPen(self.highlight_pen)
+        else:
+            self.setPen(self.default_pen)
+
+    def _execute_merge(self):
+        """Executes the node-to-node or node-to-bundle merge upon mouse release."""
+        if not self.canvas_ref or not hasattr(self.canvas_ref, "current_project"):
+            return
+
+        model = self.canvas_ref.current_project
+        # 1. Snapshot state before merge
+        old_data = deepcopy(model.data)
+        # 2. Perform the merge operation
+        if self.target_node_id:
+            model.merge_nodes(self.node_id, self.target_node_id)
+            desc = f"Merge Junction {self.node_id} into {self.target_node_id}"
+        elif self.target_bundle_id and self.proj_point:
+            model.merge_node_into_bundle(self.node_id, self.target_bundle_id, self.proj_point[0], self.proj_point[1])
+            desc = f"Snap Junction {self.node_id} into Bundle {self.target_bundle_id}"
+        else:
+            return
+        # 3. Snapshot state after merge
+        new_data = deepcopy(model.data)
+        undo_stack=self.canvas_ref.main_window.undo_stack
+        command = MergeCommand(model, old_data, new_data, self.canvas_ref.re_load_topology, description=desc)
+        undo_stack.push(command)
+        # Refresh the canvas display
+        if hasattr(self.canvas_ref, "refresh_canvas"):
+            self.canvas_ref.refresh_canvas()
+        elif hasattr(self.canvas_ref, "update"):
+            self.canvas_ref.update()
         
 class BundleGraphicsItem(QGraphicsLineItem):
     """Custom interactive bundle with branch length label, inline editing, and pen-based selection highlight."""
@@ -289,7 +458,105 @@ class BundleGraphicsItem(QGraphicsLineItem):
         # Position label at midpoint of the line
         self._update_label_position()
         self.update_covering_style()
+        self.setAcceptedMouseButtons(Qt.LeftButton | Qt.RightButton)
 
+    def contextMenuEvent(self, event):
+        """Displays the right-click context menu for bundle options."""
+        menu = QMenu()
+        
+        break_action = menu.addAction("Break Bundle")
+        edit_len_action = menu.addAction("Edit Length...")
+        props_action = menu.addAction("Properties...")
+        highlight_action = menu.addAction("Highlight Connections")
+        
+        # Execute menu at cursor screen position
+        action = menu.exec_(event.screenPos())
+        
+        if action == break_action:
+            self._break_bundle(event.scenePos())
+        elif action == edit_len_action:
+            self._edit_length()
+        elif action == props_action:
+            self._show_properties()
+        elif action == highlight_action:
+            self._highlight_connections()
+
+    def _break_bundle(self, scene_pos: QPointF):
+        """Breaks the bundle at the clicked scene position by inserting a new Z-junction."""
+        if not self.canvas_ref or not hasattr(self.canvas_ref, "current_project"):
+            return
+            
+        model = self.canvas_ref.current_project
+        junction_ref, ok = QInputDialog.getText(
+            None, "Break Bundle", "Enter Junction Reference (e.g., J3):", text="J3"
+        )
+        if ok and junction_ref:
+            model.break_bundle(self.bundle_id, junction_ref, scene_pos.x(), scene_pos.y())
+            # Refresh the canvas display
+            self.canvas_ref.load_topology(model)
+
+    def _edit_length(self):
+        """Opens an input dialog to modify the physical length of the bundle."""
+        if not self.canvas_ref or not hasattr(self.canvas_ref, "current_project"):
+            return
+            
+        model = self.canvas_ref.current_project
+        bundles = model.data.get("bundles", model.data.get("branches", []))
+        bundle_data = next((b for b in bundles if (b.get("bundle_id") or b.get("branch_id") or b.get("id")) == self.bundle_id), None)
+        
+        if not bundle_data:
+            return
+            
+        current_len = bundle_data.get("length_mm", 0.0)
+        new_len, ok = QInputDialog.getDouble(
+            None, "Edit Bundle Length", f"Length for {self.bundle_id} (mm):", 
+            value=current_len, min=0.0, max=10000.0, decimals=1
+        )
+        
+        if ok:
+            bundle_data["length_mm"] = new_len
+            # Refresh the canvas display
+            self.canvas_ref.load_topology(model)
+
+    def _show_properties(self):
+        """Opens the full BundlePropertiesDialog for editing bundle length and coverings."""
+        if not self.canvas_ref or not hasattr(self.canvas_ref, "current_project"):
+            return
+            
+        model = self.canvas_ref.current_project
+        bundles = model.data.get("bundles", [])
+        bundle_data = next((b for b in bundles if (b.get("bundle_id") or b.get("branch_id") or b.get("id")) == self.bundle_id), None)
+        
+        if not bundle_data:
+            return
+            
+        # Open the full BundlePropertiesDialog modal
+        dialog = BundlePropertiesDialog(bundle_data, parent=None)
+        if dialog.exec_() == QDialog.Accepted:
+            # Save project data changes and refresh canvas upon confirmation
+            # DatabaseManager.save_project(model.data)
+            self.canvas_ref.re_load_topology()
+            
+
+    def _highlight_connections(self):
+        """Highlights all wires whose routed paths traverse this bundle segment."""
+        if not self.canvas_ref or not hasattr(self.canvas_ref, "current_project"):
+            return
+            
+        model = self.canvas_ref.current_project
+        wires = model.data.get("wires", [])
+        
+        for w in wires:
+            routed = w.get("routed_bundle_ids", [])
+            # Toggle highlight on if bundle is in route, off otherwise (or set true for matching)
+            if self.bundle_id in routed:
+                w["is_highlighted"] = True
+            else:
+                w["is_highlighted"] = False
+                
+        self.canvas_ref.load_topology(model)
+
+        self.canvas_ref.main_window.wires_tab.refresh_wires()
 
 
     def update_covering_style(self):
@@ -498,7 +765,7 @@ class HarnessCADCanvas(QGraphicsView):
         # Enable anti-aliasing and smooth rendering
         self.setRenderHint(QPainter.Antialiasing)
         self.setRenderHint(QPainter.SmoothPixmapTransform)
-        
+        self.main_window = parent
         # Panning state variables
         self._panning = False
         self._pan_start_pos = QPoint()
@@ -512,15 +779,15 @@ class HarnessCADCanvas(QGraphicsView):
     def re_load_topology(self):
         self.load_topology(self.current_project)
         self.update()
-    def load_topology(self, project_model: HarnessProjectModel):
-        self.current_project = project_model
+    def load_topology(self, current_project: HarnessProjectModel):
+        self.current_project = current_project
         self.scene.clear()
         self.node_items.clear()
         self.bundle_items.clear()
         self.wire_items.clear()
         self.table_items.clear()
         
-        data = project_model.data
+        data = current_project.data
         
         # 1. Create Node, Junction & Attached Table Items
         for node in data.get("nodes", []):
@@ -570,13 +837,13 @@ class HarnessCADCanvas(QGraphicsView):
             table_config = node.get("table_config", {})
             show_table = table_config.get("visible", True)
             
-            if is_junction and project_model:
+            if is_junction and current_project:
                 wire_count = sum(1 for w in data.get("wires", []) for ep in w.get("endpoints", []) if ep.get("node_id") == n_id)
                 if wire_count == 0:
                     show_table = False
 
             if show_table:
-                table_item = ConnectorTableGraphicsItem(n_id, node, project_model=project_model)
+                table_item = ConnectorTableGraphicsItem(n_id, node, project_model=current_project)
                 offset = table_config.get("offset_2d", {"x": 50, "y": -40})
                 table_item.setPos(x + offset["x"], y + offset["y"])
                 self.scene.addItem(table_item)

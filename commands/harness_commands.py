@@ -1,5 +1,33 @@
 from PyQt5.QtWidgets import QUndoCommand
 from copy import deepcopy
+
+class MergeCommand(QUndoCommand):
+    """Undoable command for merging junction nodes or snapping nodes into bundles."""
+    def __init__(self, project_model, old_data, new_data, refresh_callback=None, description="Merge Junction"):
+        super().__init__(description)
+        self.project_model = project_model
+        self.old_data = old_data
+        self.new_data = new_data
+        self.refresh_callback = refresh_callback
+
+    def undo(self):
+        self._apply_data(self.old_data)
+
+    def redo(self):
+        self._apply_data(self.new_data)
+
+    def _apply_data(self, data_dict):
+        if not self.project_model or not hasattr(self.project_model, "data"):
+            return
+        # Restore project data state
+        self.project_model.data = deepcopy(data_dict)
+        # DatabaseManager.save_project(self.project_model.data)
+        
+        if self.refresh_callback:
+            self.refresh_callback()
+        elif hasattr(self.project_model, "canvas_ref") and hasattr(self.project_model.canvas_ref, "refresh_canvas"):
+            self.project_model.canvas_ref.refresh_canvas()
+            
 class BreakBundleCommand(QUndoCommand):
     """Undo/redo command for breaking a bundle segment and inserting a junction node."""
     def __init__(self, project_model, bundle_id, junction_ref, x, y, update_callback):

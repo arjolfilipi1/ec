@@ -9,8 +9,8 @@
       "part_number": "1",
       "ref_designator": "STVBT 02",
       "position_2d": {
-        "x": 105.0,
-        "y": 124.0
+        "x": -64.5877173913043,
+        "y": 145.52304347826083
       },
       "pins": [
         {
@@ -26,8 +26,8 @@
       ],
       "table_config": {
         "offset_2d": {
-          "x": -69.0,
-          "y": -109.0
+          "x": -73.0,
+          "y": -213.5
         }
       }
     },
@@ -36,8 +36,8 @@
       "part_number": "1",
       "ref_designator": "STVBT 01",
       "position_2d": {
-        "x": 90.0,
-        "y": 304.0
+        "x": -114.71434782608688,
+        "y": 294.96032608695646
       },
       "pins": [
         {
@@ -98,8 +98,8 @@
       "part_number": "1",
       "ref_designator": "STVBT 13",
       "position_2d": {
-        "x": 615.1580246330113,
-        "y": -13.180264457933049
+        "x": 650.810198546055,
+        "y": -20.13678619706348
       },
       "pins": [
         {
@@ -162,8 +162,8 @@
       "part_number": "1",
       "ref_designator": "STVBT 14",
       "position_2d": {
-        "x": 1041.6958510937498,
-        "y": 158.30159712500011
+        "x": 1239.3296065285326,
+        "y": 118.1075373423914
       },
       "pins": [
         {
@@ -189,8 +189,8 @@
       "part_number": "1",
       "ref_designator": "STVBT 12",
       "position_2d": {
-        "x": 1145.3539999999996,
-        "y": 168.80912500000005
+        "x": 1386.9928913043484,
+        "y": 280.065081521739
       },
       "pins": [
         {
@@ -381,12 +381,12 @@
       "part_number": "SPLICE-Z-JUNCTION",
       "ref_designator": "Z3",
       "position_2d": {
-        "x": 796.4000000000001,
-        "y": 99.6
+        "x": 793.7913043478266,
+        "y": 70.03478260869565
       },
       "formboard_position_2d": {
-        "x": 780.4,
-        "y": 87.6
+        "x": 795.0233563450396,
+        "y": 71.12910933460653
       },
       "pins": [],
       "table_config": {
@@ -430,12 +430,12 @@
       "part_number": "SPLICE-Z-JUNCTION",
       "ref_designator": "LV1",
       "position_2d": {
-        "x": 455.8750000000001,
-        "y": 300.525
+        "x": 388.9184782608697,
+        "y": 296.1771739130434
       },
       "formboard_position_2d": {
-        "x": 413.8750000000001,
-        "y": 291.525
+        "x": 455.8750000000001,
+        "y": 300.525
       },
       "pins": [],
       "table_config": {
@@ -470,6 +470,34 @@
         "visible": true
       },
       "is_junction": true
+    },
+    {
+      "node_id": "J_9535f4",
+      "position_2d": {
+        "x": 106.70809307280598,
+        "y": 303.84131021953397
+      },
+      "ref_designator": "J_9535f4",
+      "formboard_position_2d": {
+        "x": 106.70809307280598,
+        "y": 303.84131021953397
+      },
+      "component_part_number": "Junction",
+      "is_junction": true
+    },
+    {
+      "node_id": "J_63f5bd",
+      "position_2d": {
+        "x": 1168.4574610965415,
+        "y": 281.8347166428591
+      },
+      "ref_designator": "J_63f5bd",
+      "formboard_position_2d": {
+        "x": 1127.5878958791504,
+        "y": 255.74776012111994
+      },
+      "component_part_number": "Junction",
+      "is_junction": true
     }
   ],
   "bundles": [
@@ -478,48 +506,19 @@
       "start_node_id": "stvbt 06",
       "end_node_id": "z_557E",
       "length_mm": 112.9,
-      "coverings": []
+      "coverings": [
+        {
+          "part_number": "CORR-NW-7.5",
+          "start_ratio": 0.0,
+          "end_ratio": 1.0
+        }
+      ]
     },
     {
       "bundle_id": "BUN-8A24",
       "start_node_id": "z_557E",
       "end_node_id": "z_DEAB",
       "length_mm": 112.9,
-      "coverings": []
-    },
-    {
-      "bundle_id": "BUN-2070",
-      "start_node_id": "z_557E",
-      "end_node_id": "stvbt 12",
-      "length_mm": 152.9,
-      "coverings": []
-    },
-    {
-      "bundle_id": "BUN-AFEE",
-      "start_node_id": "z_DEAB",
-      "end_node_id": "z_F2DC",
-      "length_mm": 112.9,
-      "coverings": []
-    },
-    {
-      "bundle_id": "BUN-F5AD",
-      "start_node_id": "z_F2DC",
-      "end_node_id": "stvbt 03",
-      "length_mm": 112.9,
-      "coverings": []
-    },
-    {
-      "bundle_id": "BUN-AC7A",
-      "start_node_id": "z_F2DC",
-      "end_node_id": "stvbt 13",
-      "length_mm": 204.0,
-      "coverings": []
-    },
-    {
-      "bundle_id": "BUN-F4EB",
-      "start_node_id": "LV1",
-      "end_node_id": "stvbt 01",
-      "length_mm": 369.8,
       "coverings": []
     },
     {
@@ -530,10 +529,127 @@
       "coverings": []
     },
     {
-      "bundle_id": "BUN-6334",
+      "bundle_id": "B_e8b6cf",
+      "start_node_id": "LV1",
+      "end_node_id": "J_9535f4",
+      "length_mm": 369.8,
+      "coverings": []
+    },
+    {
+      "bundle_id": "B_0936c7",
+      "start_node_id": "J_9535f4",
+      "end_node_id": "stvbt 01",
+      "length_mm": 50.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "B_495957",
+      "start_node_id": "J_9535f4",
+      "end_node_id": "stvbt 02",
+      "length_mm": 100.0
+    },
+    {
+      "bundle_id": "B_63ad41",
+      "start_node_id": "J_63f5bd",
+      "end_node_id": "stvbt 14",
+      "length_mm": 180.0
+    },
+    {
+      "bundle_id": "BUN-F430",
+      "start_node_id": "z_F2DC",
+      "end_node_id": "z_F2DC",
+      "length_mm": 40.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-FF6A",
+      "start_node_id": "z_F2DC",
+      "end_node_id": "z_F2DC",
+      "length_mm": 35.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-694E",
+      "start_node_id": "z_F2DC",
+      "end_node_id": "z_F2DC",
+      "length_mm": 10.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-58AF",
+      "start_node_id": "z_F2DC",
+      "end_node_id": "stvbt 13",
+      "length_mm": 20.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-36C1",
+      "start_node_id": "z_DEAB",
+      "end_node_id": "z_F2DC",
+      "length_mm": 80.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-430F",
+      "start_node_id": "z_F2DC",
+      "end_node_id": "z_F2DC",
+      "length_mm": 20.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-B0A4",
+      "start_node_id": "z_F2DC",
+      "end_node_id": "z_F2DC",
+      "length_mm": 17.5,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-FE8F",
+      "start_node_id": "z_F2DC",
+      "end_node_id": "stvbt 03",
+      "length_mm": 70.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-905F",
+      "start_node_id": "J_63f5bd",
+      "end_node_id": "J_63f5bd",
+      "length_mm": 76.5,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-6A31",
+      "start_node_id": "J_63f5bd",
+      "end_node_id": "stvbt 12",
+      "length_mm": 170.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-9F8F",
+      "start_node_id": "z_557E",
+      "end_node_id": "J_63f5bd",
+      "length_mm": 85.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-F0AF",
+      "start_node_id": "J_63f5bd",
+      "end_node_id": "J_63f5bd",
+      "length_mm": 85.0,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-171F",
       "start_node_id": "LV2",
       "end_node_id": "LV1",
-      "length_mm": 184.9,
+      "length_mm": 92.5,
+      "coverings": []
+    },
+    {
+      "bundle_id": "BUN-A98F",
+      "start_node_id": "LV1",
+      "end_node_id": "LV1",
+      "length_mm": 92.5,
       "coverings": []
     }
   ],
@@ -558,8 +674,12 @@
       "routed_bundle_ids": [
         "BUN-4E19",
         "BUN-8A24",
-        "BUN-AFEE",
-        "BUN-F5AD"
+        "BUN-36C1",
+        "BUN-430F",
+        "BUN-F430",
+        "BUN-FF6A",
+        "BUN-B0A4",
+        "BUN-FE8F"
       ],
       "extra_length_mm": 20.0,
       "stripe_color": "",
@@ -584,10 +704,15 @@
       ],
       "routed_bundle_ids": [
         "BUN-1FCB",
-        "BUN-6334",
-        "BUN-F4EB",
+        "BUN-171F",
+        "BUN-A98F",
+        "B_e8b6cf",
+        "B_0936c7",
         "BUN-8A24",
-        "BUN-2070"
+        "BUN-9F8F",
+        "BUN-F0AF",
+        "BUN-905F",
+        "BUN-6A31"
       ],
       "extra_length_mm": 20.0,
       "stripe_color": "",
@@ -612,10 +737,15 @@
       ],
       "routed_bundle_ids": [
         "BUN-1FCB",
-        "BUN-6334",
-        "BUN-F4EB",
-        "BUN-AFEE",
-        "BUN-AC7A"
+        "BUN-171F",
+        "BUN-A98F",
+        "B_e8b6cf",
+        "B_0936c7",
+        "BUN-36C1",
+        "BUN-430F",
+        "BUN-F430",
+        "BUN-694E",
+        "BUN-58AF"
       ],
       "extra_length_mm": 20.0,
       "stripe_color": "",
@@ -640,10 +770,15 @@
       ],
       "routed_bundle_ids": [
         "BUN-1FCB",
-        "BUN-6334",
-        "BUN-F4EB",
-        "BUN-AFEE",
-        "BUN-AC7A"
+        "BUN-171F",
+        "BUN-A98F",
+        "B_e8b6cf",
+        "B_0936c7",
+        "BUN-36C1",
+        "BUN-430F",
+        "BUN-F430",
+        "BUN-694E",
+        "BUN-58AF"
       ],
       "extra_length_mm": 20.0,
       "stripe_color": "",
@@ -669,8 +804,12 @@
       "routed_bundle_ids": [
         "BUN-4E19",
         "BUN-8A24",
-        "BUN-AFEE",
-        "BUN-F5AD"
+        "BUN-36C1",
+        "BUN-430F",
+        "BUN-F430",
+        "BUN-FF6A",
+        "BUN-B0A4",
+        "BUN-FE8F"
       ],
       "extra_length_mm": 20.0,
       "stripe_color": "WH",
@@ -694,7 +833,8 @@
         }
       ],
       "routed_bundle_ids": [
-        "BUN-F4EB"
+        "B_e8b6cf",
+        "B_0936c7"
       ],
       "extra_length_mm": 20.0,
       "stripe_color": "",
@@ -721,7 +861,8 @@
         "BUN-4E19",
         "BUN-8A24",
         "BUN-1FCB",
-        "BUN-6334"
+        "BUN-171F",
+        "BUN-A98F"
       ],
       "extra_length_mm": 20.0,
       "stripe_color": "",
@@ -745,10 +886,15 @@
         }
       ],
       "routed_bundle_ids": [
-        "BUN-F5AD",
-        "BUN-AFEE",
+        "BUN-FF6A",
+        "BUN-B0A4",
+        "BUN-FE8F",
+        "BUN-36C1",
+        "BUN-430F",
+        "BUN-F430",
         "BUN-1FCB",
-        "BUN-6334"
+        "BUN-171F",
+        "BUN-A98F"
       ],
       "extra_length_mm": 20.0,
       "stripe_color": "",
@@ -775,7 +921,8 @@
         "BUN-4E19",
         "BUN-8A24",
         "BUN-1FCB",
-        "BUN-6334"
+        "BUN-171F",
+        "BUN-A98F"
       ],
       "extra_length_mm": 20.0,
       "stripe_color": "",
@@ -799,7 +946,10 @@
         }
       ],
       "routed_bundle_ids": [
-        "BUN-2070",
+        "BUN-9F8F",
+        "BUN-F0AF",
+        "BUN-905F",
+        "BUN-6A31",
         "BUN-8A24",
         "BUN-1FCB"
       ],
@@ -828,8 +978,12 @@
       ],
       "routed_bundle_ids": [
         "BUN-1FCB",
-        "BUN-AFEE",
-        "BUN-F5AD"
+        "BUN-36C1",
+        "BUN-430F",
+        "BUN-F430",
+        "BUN-FF6A",
+        "BUN-B0A4",
+        "BUN-FE8F"
       ],
       "is_highlighted": false
     },
@@ -853,10 +1007,74 @@
         }
       ],
       "routed_bundle_ids": [
-        "BUN-6334",
-        "BUN-F4EB"
+        "BUN-171F",
+        "BUN-A98F",
+        "B_e8b6cf",
+        "B_0936c7"
       ],
       "is_highlighted": false
+    },
+    {
+      "wire_id": "SEN1",
+      "signal_name": "GST 1",
+      "gauge": 0.5,
+      "outer_diameter_mm": 1.6,
+      "color": "WH",
+      "stripe_color": "OR",
+      "wire_part_number": "WIRE-0.5-WH",
+      "extra_length_mm": 0.0,
+      "endpoints": [
+        {
+          "node_id": "stvbt 02",
+          "cavity_id": "1"
+        },
+        {
+          "node_id": "stvbt 14",
+          "cavity_id": "1"
+        }
+      ],
+      "routed_bundle_ids": [
+        "B_495957",
+        "B_e8b6cf",
+        "BUN-171F",
+        "BUN-A98F",
+        "BUN-1FCB",
+        "BUN-8A24",
+        "BUN-9F8F",
+        "BUN-F0AF",
+        "B_63ad41"
+      ]
+    },
+    {
+      "wire_id": "SEN2",
+      "signal_name": "GST 2",
+      "gauge": 0.5,
+      "outer_diameter_mm": 1.6,
+      "color": "BN",
+      "stripe_color": "",
+      "wire_part_number": "WIRE-0.5-BN",
+      "extra_length_mm": 0.0,
+      "endpoints": [
+        {
+          "node_id": "stvbt 02",
+          "cavity_id": "2"
+        },
+        {
+          "node_id": "stvbt 14",
+          "cavity_id": "2"
+        }
+      ],
+      "routed_bundle_ids": [
+        "B_495957",
+        "B_e8b6cf",
+        "BUN-171F",
+        "BUN-A98F",
+        "BUN-1FCB",
+        "BUN-8A24",
+        "BUN-9F8F",
+        "BUN-F0AF",
+        "B_63ad41"
+      ]
     }
   ],
   "cables": []

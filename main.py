@@ -164,9 +164,8 @@ class HarnessEditorWindow(QMainWindow):
         main_splitter.addWidget(self.sidebar_tabs)
 
         # Center Drawing & Layout Engine Canvas Workspace
-        self.cad_canvas = HarnessCADCanvas()
+        self.cad_canvas = HarnessCADCanvas(self)
 
-        self.cad_canvas = HarnessCADCanvas()
         self.cad_canvas.nodesMoved.connect(self.handle_nodes_moved)
         self.cad_canvas.nodeDeletionRequested.connect(self.remove_connector_action)
         self.cad_canvas.tableMoved.connect(self.handle_table_moved)
@@ -308,7 +307,7 @@ class HarnessEditorWindow(QMainWindow):
         self.undo_stack.push(command)
         self.statusBar().showMessage(f"Broke bundle {bundle_id} and inserted junction {junction_ref} (Undoable).")
     def prompt_add_wire(self):
-        """Opens the unified single-window AddWireDialog."""
+        """Opens the unified single-window AddWireDialog with complete structural undo support."""
         from ui.wire_dialog import AddWireDialog
         from commands.harness_commands import ModifyHarnessCommand
         
@@ -316,17 +315,30 @@ class HarnessEditorWindow(QMainWindow):
         if dialog.exec_() == QDialog.Accepted:
             new_wire = dialog.wire_data
             
-            # Record undoable command
+            # 1. Record pristine undoable command state BEFORE any modifications happen
             command = ModifyHarnessCommand(
                 self.current_project, 
                 f"Add Wire ({new_wire['wire_id']})", 
                 self.refresh_views
             )
             
+            # 2. Safely perform topology bridging inside the transaction boundary
+            if "requires_bridge_nodes" in new_wire:
+                for node_id in new_wire["requires_bridge_nodes"]:
+                    # Call the geometric method now; edits are captured by the undo snapshot
+                    dialog._bridge_node_to_network(node_id) 
+            
+            # 3. Calculate final pathing now that network segments actually exist
+            new_wire["routed_bundle_ids"] = dialog._compute_route(new_wire["endpoints"])
+            new_wire.pop("requires_bridge_nodes", None) # Clean metadata flag
+            
+            # 4. Attach the wire object definition to the live harness model
             self.current_project.data.setdefault("wires", []).append(new_wire)
             
+            # 5. Commit state capture to the transaction stack
             command.set_new_state()
             self.undo_stack.push(command)
+            
             DatabaseManager.save_project(self.current_project.data)
             self.refresh_views()
             self.statusBar().showMessage(f"Added wire {new_wire['wire_id']}.")
