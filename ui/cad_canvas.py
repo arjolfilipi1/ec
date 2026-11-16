@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsRectItem, Q
                                  QMenu, QInputDialog, QMessageBox,QDialog)
 from PyQt5.QtCore import Qt, QPointF, pyqtSignal,QPoint
 from PyQt5.QtGui import QPen, QBrush, QColor, QFont, QWheelEvent, QPainter,QPixmap,QTransform
-from models.harness_model import HarnessProjectModel
+from core.harness_model import HarnessProjectModel
 import math
 from copy import deepcopy
 from database import DatabaseManager
@@ -482,60 +482,18 @@ class BundleGraphicsItem(QGraphicsLineItem):
             self._highlight_connections()
 
     def _break_bundle(self, scene_pos: QPointF):
-        """Breaks the bundle at the clicked scene position by inserting a new Z-junction."""
-        if not self.canvas_ref or not hasattr(self.canvas_ref, "current_project"):
-            return
-            
-        model = self.canvas_ref.current_project
-        junction_ref, ok = QInputDialog.getText(
-            None, "Break Bundle", "Enter Junction Reference (e.g., J3):", text="J3"
-        )
-        if ok and junction_ref:
-            model.break_bundle(self.bundle_id, junction_ref, scene_pos.x(), scene_pos.y())
-            # Refresh the canvas display
-            self.canvas_ref.load_topology(model)
-
+        self.canvas_ref.bundleBreakRequested.emit(self.bundle_id, scene_pos.x(), scene_pos.y())
     def _edit_length(self):
-        """Opens an input dialog to modify the physical length of the bundle."""
-        if not self.canvas_ref or not hasattr(self.canvas_ref, "current_project"):
-            return
-            
-        model = self.canvas_ref.current_project
-        bundles = model.data.get("bundles", model.data.get("branches", []))
-        bundle_data = next((b for b in bundles if (b.get("bundle_id") or b.get("branch_id") or b.get("id")) == self.bundle_id), None)
-        
-        if not bundle_data:
-            return
-            
-        current_len = bundle_data.get("length_mm", 0.0)
+        current_len = self.bundle_data.get("length_mm", 0.0)
         new_len, ok = QInputDialog.getDouble(
-            None, "Edit Bundle Length", f"Length for {self.bundle_id} (mm):", 
+            None, "Edit Bundle Length", f"Length for {self.bundle_id} (mm):",
             value=current_len, min=0.0, max=10000.0, decimals=1
         )
-        
         if ok:
-            bundle_data["length_mm"] = new_len
-            # Refresh the canvas display
-            self.canvas_ref.load_topology(model)
+            self.canvas_ref.bundleLengthEdited.emit(self.bundle_id, new_len)
 
     def _show_properties(self):
-        """Opens the full BundlePropertiesDialog for editing bundle length and coverings."""
-        if not self.canvas_ref or not hasattr(self.canvas_ref, "current_project"):
-            return
-            
-        model = self.canvas_ref.current_project
-        bundles = model.data.get("bundles", [])
-        bundle_data = next((b for b in bundles if (b.get("bundle_id") or b.get("branch_id") or b.get("id")) == self.bundle_id), None)
-        
-        if not bundle_data:
-            return
-            
-        # Open the full BundlePropertiesDialog modal
-        dialog = BundlePropertiesDialog(bundle_data, parent=None)
-        if dialog.exec_() == QDialog.Accepted:
-            # Save project data changes and refresh canvas upon confirmation
-            # DatabaseManager.save_project(model.data)
-            self.canvas_ref.re_load_topology()
+        self.canvas_ref.bundlePropertiesRequested.emit(self.bundle_data)
             
 
     def _highlight_connections(self):
@@ -655,18 +613,13 @@ class BundleGraphicsItem(QGraphicsLineItem):
         def commit_length():
             try:
                 new_val = float(self.editor.text().strip())
-                self.bundle_data["length_mm"] = new_val
-                self.label_item.setPlainText(f"{new_val:.1f} mm")
-                
-                # Re-center cleanly using synchronous ideal width
-                self._update_label_position()
-                
+                self.canvas_ref.bundleLengthEdited.emit(self.bundle_id, new_val)
             except ValueError:
                 pass
             if self.editor:
                 self.editor.deleteLater()
                 self.editor = None
-                
+                        
         self.editor.editingFinished.connect(commit_length)
     def update_endpoints(self, p1: QPointF, p2: QPointF):
         """Updates line geometry, matches bundle rotation, and normalizes angle to stay upright."""
@@ -743,7 +696,11 @@ class WireGraphicsItem(QGraphicsItemGroup):
 
 class HarnessCADCanvas(QGraphicsView):
     """Interactive 2D vector graphics workspace for harness schematic and formboard layout[cite: 1]."""
-    
+    # Add these signals to HarnessCADCanvas:
+    bundleBreakRequested = pyqtSignal(str, float, float)   # bundle_id, x, y
+    bundleLengthEdited = pyqtSignal(str, float)           # bundle_id, new_length
+    bundlePropertiesRequested = pyqtSignal(dict)          # bundle_data
+    wireHighlightRequested = pyqtSignal(str)              # bundle_id
     nodesMoved = pyqtSignal(dict)
     nodeDeletionRequested = pyqtSignal(str)
     tableMoved = pyqtSignal(str, dict)

@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QTableWidget, QTableWidgetItem, QDialogButtonBox, QGroupBox, QFormLayout
 )
 from PyQt5.QtCore import Qt
-from models.harness_calculations import HarnessCalculator
+from core.harness_calculations import HarnessCalculator
 from ui.wire_dialog import WirePropertiesDialog
 from database import DatabaseManager
 

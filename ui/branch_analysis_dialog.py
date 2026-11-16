@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from database import DatabaseManager
-from models.harness_calculations import HarnessCalculator
+from core.harness_calculations import HarnessCalculator
 from ui.bundle_calculation_dialog import BundleCalculationDialog
 
 class BranchAnalysisDialog(QDialog):

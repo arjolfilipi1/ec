@@ -1,7 +1,7 @@
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import  pyqtSignal
 from PyQt5.QtWidgets import QTreeView
-from models.harness_model import HarnessProjectModel
+from core.harness_model import HarnessProjectModel
 
 class HarnessProjectTreeView(QTreeView):
     """Renders the hierarchical harness project structure (Nodes, Bundles, Wires)."""

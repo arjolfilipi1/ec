@@ -12,7 +12,7 @@ from copy import deepcopy
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import math
 from database import init_db, DatabaseManager
-from models.harness_model import HarnessProjectModel
+from core.harness_model import HarnessProjectModel
 from ui.project_tree import HarnessProjectTreeView
 from ui.bundle_dialog import BundlePropertiesDialog
 from ui.cad_canvas import HarnessCADCanvas
@@ -169,12 +169,63 @@ class HarnessEditorWindow(QMainWindow):
         self.cad_canvas.nodesMoved.connect(self.handle_nodes_moved)
         self.cad_canvas.nodeDeletionRequested.connect(self.remove_connector_action)
         self.cad_canvas.tableMoved.connect(self.handle_table_moved)
+        # NEW: Catch the decoupled bundle signals
+        self.cad_canvas.bundleBreakRequested.connect(self.handle_bundle_break_requested)
+        self.cad_canvas.bundleLengthEdited.connect(self.handle_bundle_length_edited)
+        self.cad_canvas.bundlePropertiesRequested.connect(self.show_bundle_properties) 
+        self.cad_canvas.wireHighlightRequested.connect(self.handle_wire_highlight_requested)
         main_splitter.addWidget(self.cad_canvas)
         self.project_tree.entitySelected.connect(self.cad_canvas.highlight_entity)
         main_splitter.setSizes([350, 1050])
         self.setCentralWidget(main_splitter)
         self.statusBar().showMessage("Ready | Undo/Redo Engine Active")
+    def handle_bundle_break_requested(self, bundle_id: str, x: float, y: float):
+        """Catches right-click -> Break Bundle from the canvas and pushes an undo command."""
+        junction_ref, ok = QInputDialog.getText(
+            self, "Break Bundle", "Enter Junction Reference (e.g., J3):", text="J3"
+        )
+        if ok and junction_ref.strip():
+            command = BreakBundleCommand(
+                self.current_project,
+                bundle_id,
+                junction_ref.strip(),
+                x,
+                y,
+                self.refresh_views
+            )
+            self.undo_stack.push(command)
+            self.statusBar().showMessage(f"Broke bundle {bundle_id} at ({x:.1f}, {y:.1f}) (Undoable).")
 
+
+    def handle_bundle_length_edited(self, bundle_id: str, new_length: float):
+        """Catches inline length edits or Edit Length dialog from the canvas with full undo support."""
+        from commands.harness_commands import ModifyHarnessCommand
+
+        command = ModifyHarnessCommand(
+            self.current_project,
+            f"Edit Bundle Length ({bundle_id})",
+            self.refresh_views
+        )
+
+        for b in self.current_project.data.get("bundles", []):
+            if b.get("bundle_id") == bundle_id:
+                b["length_mm"] = new_length
+                break
+
+        command.set_new_state()
+        self.undo_stack.push(command)
+        self.refresh_views()
+        self.statusBar().showMessage(f"Updated {bundle_id} length to {new_length:.1f} mm (Undoable).")
+
+
+    def handle_wire_highlight_requested(self, bundle_id: str):
+        """Catches right-click -> Highlight Connections from the canvas."""
+        for w in self.current_project.data.get("wires", []):
+            routed = w.get("routed_bundle_ids", [])
+            w["is_highlighted"] = (bundle_id in routed)
+
+        self.refresh_views()
+        self.statusBar().showMessage(f"Highlighted wires routed through {bundle_id}.")
     def _create_menus(self):
         menubar = self.menuBar()
         file_menu = menubar.addMenu("&File")
@@ -307,41 +358,46 @@ class HarnessEditorWindow(QMainWindow):
         self.undo_stack.push(command)
         self.statusBar().showMessage(f"Broke bundle {bundle_id} and inserted junction {junction_ref} (Undoable).")
     def prompt_add_wire(self):
-        """Opens the unified single-window AddWireDialog with complete structural undo support."""
+        """Opens AddWireDialog, runs routing/bridging in a single undo transaction, and updates views."""
         from ui.wire_dialog import AddWireDialog
         from commands.harness_commands import ModifyHarnessCommand
-        
+        from core.routing_engine import HarnessRoutingEngine
+
         dialog = AddWireDialog(self.current_project, self)
-        if dialog.exec_() == QDialog.Accepted:
-            new_wire = dialog.wire_data
-            
-            # 1. Record pristine undoable command state BEFORE any modifications happen
-            command = ModifyHarnessCommand(
-                self.current_project, 
-                f"Add Wire ({new_wire['wire_id']})", 
-                self.refresh_views
+        if dialog.exec_() != QDialog.Accepted:
+            return
+
+        new_wire = dialog.wire_data
+
+        # 1. Snapshot state BEFORE any topology changes
+        command = ModifyHarnessCommand(
+            self.current_project,
+            f"Add Wire ({new_wire['wire_id']})",
+            self.refresh_views
+        )
+
+        # 2. Bridge any disconnected endpoint nodes to the bundle network
+        for ep in new_wire.get("endpoints", []):
+            HarnessRoutingEngine.bridge_node_to_network(self.current_project, ep["node_id"])
+
+        # 3. Compute the routed bundle path now that endpoints are connected
+        endpoints = new_wire.get("endpoints", [])
+        if len(endpoints) >= 2:
+            new_wire["routed_bundle_ids"] = HarnessRoutingEngine.find_bundle_path(
+                self.current_project.data,
+                endpoints[0]["node_id"],
+                endpoints[1]["node_id"]
             )
-            
-            # 2. Safely perform topology bridging inside the transaction boundary
-            if "requires_bridge_nodes" in new_wire:
-                for node_id in new_wire["requires_bridge_nodes"]:
-                    # Call the geometric method now; edits are captured by the undo snapshot
-                    dialog._bridge_node_to_network(node_id) 
-            
-            # 3. Calculate final pathing now that network segments actually exist
-            new_wire["routed_bundle_ids"] = dialog._compute_route(new_wire["endpoints"])
-            new_wire.pop("requires_bridge_nodes", None) # Clean metadata flag
-            
-            # 4. Attach the wire object definition to the live harness model
-            self.current_project.data.setdefault("wires", []).append(new_wire)
-            
-            # 5. Commit state capture to the transaction stack
-            command.set_new_state()
-            self.undo_stack.push(command)
-            
-            DatabaseManager.save_project(self.current_project.data)
-            self.refresh_views()
-            self.statusBar().showMessage(f"Added wire {new_wire['wire_id']}.")
+
+        # 4. Add wire to model and commit undo snapshot
+        self.current_project.add_wire_object(new_wire)
+        command.set_new_state()
+        self.undo_stack.push(command)
+
+        # 5. Persist and refresh UI
+        DatabaseManager.save_project(self.current_project.data)
+        self.refresh_views()
+        self.statusBar().showMessage(f"Added wire {new_wire['wire_id']} (Undoable).")
 
     def prompt_remove_wire(self):
         """Prompt user to select and remove an existing wire."""
@@ -496,44 +552,51 @@ class HarnessEditorWindow(QMainWindow):
             self.refresh_views()
             self.statusBar().showMessage(f"Updated properties for bundle {bundle_id} (Undoable).")
     def show_wire_properties(self, wire_data: dict):
-        """Displays properties dialog for a wire, recording changes on the undo stack."""
+        """Opens WirePropertiesDialog, updates wire specs & re-routes if endpoints changed."""
         from ui.wire_dialog import WirePropertiesDialog
         from commands.harness_commands import ModifyHarnessCommand
-        
-        wire_id = wire_data.get("wire_id")
-        
-        # 1. Instantiate command before changes to capture old_state
+        from core.routing_engine import HarnessRoutingEngine
+
+        original_wire_id = wire_data.get("wire_id")
+        old_endpoints = wire_data.get("endpoints", [])
+
+        # 1. Snapshot state BEFORE opening dialog
         command = ModifyHarnessCommand(
-            self.current_project, 
-            f"Edit Wire ({wire_id})", 
+            self.current_project,
+            f"Edit Wire ({original_wire_id})",
             self.refresh_views
         )
-        
-        # 2. Open dialog
-        dialog = WirePropertiesDialog(wire_data, self.current_project,self.undo_stack, self.wires_tab.refresh_wires,self)
-        
-        if dialog.exec_() == QDialog.Accepted:
-            for w in self.current_project.data.get("wires", []):
-                if w["wire_id"] == wire_id:
-                    w["wire_id"] = wire_data.get("wire_id")
-                    w["signal_name"] = wire_data.get("signal_name")
-                    w["color"] = wire_data.get("color")
-                    w["stripe_color"] = wire_data.get("stripe_color")
-                    w["gauge"] = wire_data.get("gauge")
-                    w["outer_diameter_mm"] = wire_data.get("outer_diameter_mm")  # <--- Added this line
-                    w["extra_length_mm"] = wire_data.get("extra_length_mm")
-                    break
-            
-            # 4. Capture new_state and push to undo stack
-            command.set_new_state()
-            self.undo_stack.push(command)
-            
-            # 5. Save to SQLite database
-            DatabaseManager.save_project(self.current_project.data)
-            
-            # 6. Refresh Canvas and Tree View
-            self.refresh_views()
-            self.statusBar().showMessage(f"Updated properties for wire {wire_id} (Undoable).")
+
+        # 2. Open pure UI dialog (pass only wire_data, project_model, and parent)
+        dialog = WirePropertiesDialog(wire_data, self.current_project, parent=self)
+        if dialog.exec_() != QDialog.Accepted:
+            return
+
+        updated = dialog.wire_data
+
+        # 3. If endpoints changed, bridge new nodes and recalculate the bundle path
+        new_endpoints = updated.get("endpoints", [])
+        if new_endpoints != old_endpoints and len(new_endpoints) >= 2:
+            for ep in new_endpoints:
+                HarnessRoutingEngine.bridge_node_to_network(self.current_project, ep["node_id"])
+            updated["routed_bundle_ids"] = HarnessRoutingEngine.find_bundle_path(
+                self.current_project.data,
+                new_endpoints[0]["node_id"],
+                new_endpoints[1]["node_id"]
+            )
+
+        # 4. Apply updated fields to the wire in the model
+        for i, w in enumerate(self.current_project.data.get("wires", [])):
+            if w.get("wire_id") == original_wire_id:
+                w.update(updated)
+                break
+
+        # 5. Commit undo snapshot, save, and refresh all views
+        command.set_new_state()
+        self.undo_stack.push(command)
+        DatabaseManager.save_project(self.current_project.data)
+        self.refresh_views()
+        self.statusBar().showMessage(f"Updated wire {updated.get('wire_id')} (Undoable).")
     def save_local_json_action(self):
         """Saves the current harness project as a portable local JSON file."""
         file_path, _ = QFileDialog.getSaveFileName(

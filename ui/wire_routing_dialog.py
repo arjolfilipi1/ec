@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QLabel, QLineEdit, QPushButton, QGroupBox, QFormLayout, QTextEdit, QMessageBox
 )
 from PyQt5.QtCore import Qt
-from models.harness_model import HarnessProjectModel
+from core.harness_model import HarnessProjectModel
 
 class WireRoutingManagerDialog(QDialog):
     """Interactive manager for inspecting, recomputing, and editing wire routing paths."""

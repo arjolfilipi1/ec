@@ -115,8 +115,8 @@ class WiresTabWidget(QWidget):
         """Saves individual wire highlight state and triggers canvas repaint."""
         wire_dict["is_highlighted"] = bool(state == Qt.Checked)
         
-        if self.parent_window.current_project and hasattr(self.parent_window.current_project, "data"):
-            DatabaseManager.save_project(self.parent_window.current_project.data)
+        # if self.parent_window.current_project and hasattr(self.parent_window.current_project, "data"):
+            # DatabaseManager.save_project(self.parent_window.current_project.data)
             
         # Trigger canvas refresh on parent window if available
         main_win = self.window()
