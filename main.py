@@ -78,7 +78,7 @@ class HarnessEditorWindow(QMainWindow):
         """Refreshes tree view and canvas whenever model state changes (undo/redo/edit)."""
         self.project_tree.load_project(self.current_project)
         self.cad_canvas.load_topology(self.current_project)
-        self.wires_tab.refresh_wires()
+        self.wires_tab.load_project(self.current_project)
     def _load_sample_data(self):
         """Loads a sample multi-branch harness project topology for demonstration[cite: 1]."""
         self.current_project.data = {
@@ -159,7 +159,9 @@ class HarnessEditorWindow(QMainWindow):
         self.sidebar_tabs.addTab(self.project_tree, "Project")
 
         # New Wires Tab
-        self.wires_tab = WiresTabWidget(self.current_project,self.undo_stack, self)
+        self.wires_tab = WiresTabWidget(self)
+        self.wires_tab.wireEditRequested.connect(self.show_wire_properties)
+        self.wires_tab.wireHighlightToggled.connect(self.handle_wire_highlight_toggled)
         self.sidebar_tabs.addTab(self.wires_tab, "Wires")
         main_splitter.addWidget(self.sidebar_tabs)
 
@@ -179,6 +181,12 @@ class HarnessEditorWindow(QMainWindow):
         main_splitter.setSizes([350, 1050])
         self.setCentralWidget(main_splitter)
         self.statusBar().showMessage("Ready | Undo/Redo Engine Active")
+    def handle_wire_highlight_toggled(self, wire_id: str, is_highlighted: bool):
+        for w in self.current_project.data.get("wires", []):
+            if w.get("wire_id") == wire_id:
+                w["is_highlighted"] = is_highlighted
+                break
+        self.cad_canvas.re_load_topology()
     def handle_bundle_break_requested(self, bundle_id: str, x: float, y: float):
         """Catches right-click -> Break Bundle from the canvas and pushes an undo command."""
         junction_ref, ok = QInputDialog.getText(
